@@ -320,6 +320,22 @@
         </ol>
       </div>
     </div>
+
+    <!-- Delivery: projects and tickets linked to this Need (not a demand signal) -->
+    <div class="section">
+      <div class="section-head"><h2>Delivery</h2><span class="muted">Ticket counts don't measure demand</span></div>
+      <div class="card flush">
+        <table class="stack-sm">
+          <thead><tr><th scope="col">Ticket</th><th scope="col">Project · Client</th><th scope="col">Assignee</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            <tr><td class="primary"><span class="ticket-id">T-101</span><br><span class="strong">CSV export for dashboard reports</span></td><td data-label="Project · Client">Reporting Modernization · Northwind Logistics</td><td data-label="Assignee">Ravi Patel</td><td data-label="Status"><span class="chip st-planned">Planned</span></td></tr>
+            <tr><td class="primary"><span class="ticket-id">T-103</span><br><span class="strong">Monthly shipment report CSV for audits</span></td><td data-label="Project · Client">Compliance Reporting · Contoso Health</td><td data-label="Assignee">Ravi Patel</td><td data-label="Status"><span class="chip st-dev">In Development</span></td></tr>
+            <tr><td class="primary"><span class="ticket-id">T-102</span><br><span class="strong">Google Sheets connector spike</span></td><td data-label="Project · Client">Reporting Modernization · Northwind Logistics</td><td data-label="Assignee">Mia Chen</td><td data-label="Status"><span class="chip st-review">Backlog</span></td></tr>
+            <tr><td class="primary"><span class="ticket-id">T-106</span><br><span class="strong">Audit log export</span></td><td data-label="Project · Client">Compliance Reporting · Contoso Health</td><td data-label="Assignee">Ravi Patel</td><td data-label="Status"><span class="chip st-released">Released</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- ================= TICKETS ================= -->
@@ -327,27 +343,68 @@
     <div class="page-head">
       <div>
         <span class="eyebrow">Tickets</span>
-        <h1 id="h-tickets">Every Customer Need, from review to release</h1>
-        <p class="lede">You own decisions. Engineers move delivery status on tickets assigned to them.</p>
+        <h1 id="h-tickets">Delivery across projects</h1>
+        <p class="lede">Tickets are what Engineering is building; each links to the Customer Need that explains why. You move tickets into Planned; engineers move them through delivery.</p>
       </div>
     </div>
-    <div class="board">
-      <div class="col"><div class="col-head"><h2>Under Review</h2><span>2</span></div>
-        <button class="ticket" data-go="need"><span class="t-title">Use product data outside the platform</span><span class="muted">24 requests · 8 accounts</span><span class="meta"><span class="chip">Unassigned</span></span></button>
-        <button class="ticket" data-go="need"><span class="t-title">Know about delays before customers do</span><span class="muted">7 requests · 4 accounts</span></button>
-      </div>
-      <div class="col"><div class="col-head"><h2>Planned</h2><span>1</span></div>
-        <button class="ticket" data-go="need"><span class="t-title">Bulk export audit history</span><span class="muted">P2</span><span class="meta"><span class="chip">Mia Chen</span></span></button>
-      </div>
-      <div class="col"><div class="col-head"><h2>In Development</h2><span>1</span></div>
-        <button class="ticket" data-go="need"><span class="t-title">Sign in with company identity</span><span class="muted">P1 · effort L</span><span class="meta"><span class="chip">Ravi Patel</span><span class="chip">Jo Osei</span></span></button>
-      </div>
-      <div class="col"><div class="col-head"><h2>Released</h2><span>1</span></div>
-        <button class="ticket" data-go="need"><span class="t-title">Audit log export</span><span class="muted">Released Sep 30</span></button>
-      </div>
-      <div class="col"><div class="col-head"><h2>Not Planned</h2><span>1</span></div>
-        <button class="ticket" data-go="need"><span class="t-title">Dark mode for the dashboard</span><span class="muted">High demand, low strategic value</span></button>
-      </div>
+    <div class="board four">
+      <section class="col" aria-label="Backlog"><div class="col-head"><h2>Backlog</h2><span>3</span></div>
+        <div class="ticket">
+          <span class="ticket-id">T-102 · <span class="prio">P2</span> · Effort L</span>
+          <span class="t-title">Google Sheets connector spike</span>
+          <span class="muted">Reporting Modernization · Northwind Logistics</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Use product data outside the platform</button></span>
+          <span class="meta"><span class="chip">Mia Chen</span></span><div class="btn-row" style="margin-top:.55rem"><button class="btn btn-dark btn-sm" data-toast="T-102 moved to Planned · engineers notified">Plan</button></div>
+        </div>
+        <div class="ticket">
+          <span class="ticket-id">T-105 · <span class="prio">P2</span> · Effort M</span>
+          <span class="t-title">Okta SCIM user provisioning</span>
+          <span class="muted">Identity Modernization · Contoso Health</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Sign in with company identity</button></span>
+          <span class="meta"><span class="chip">Jo Osei</span></span><div class="btn-row" style="margin-top:.55rem"><button class="btn btn-dark btn-sm" data-toast="T-105 moved to Planned · engineers notified">Plan</button></div>
+        </div>
+        <div class="ticket">
+          <span class="ticket-id">T-107 · <span class="prio">P2</span> · Effort M</span>
+          <span class="t-title">Bulk rate import from CSV</span>
+          <span class="muted">Carrier Automation · Northwind Logistics</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Update many carrier rates at once</button></span>
+          <span class="meta"><span class="chip">Mia Chen</span></span><div class="btn-row" style="margin-top:.55rem"><button class="btn btn-dark btn-sm" data-toast="T-107 moved to Planned · engineers notified">Plan</button></div>
+        </div>
+      </section>
+      <section class="col" aria-label="Planned"><div class="col-head"><h2>Planned</h2><span>1</span></div>
+        <div class="ticket">
+          <span class="ticket-id">T-101 · <span class="prio">P1</span> · Effort M</span>
+          <span class="t-title">CSV export for dashboard reports</span>
+          <span class="muted">Reporting Modernization · Northwind Logistics</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Use product data outside the platform</button></span>
+          <span class="meta"><span class="chip">Ravi Patel</span></span>
+        </div>
+      </section>
+      <section class="col" aria-label="In Development"><div class="col-head"><h2>In Development</h2><span>2</span></div>
+        <div class="ticket">
+          <span class="ticket-id">T-103 · <span class="prio">P1</span> · Effort S</span>
+          <span class="t-title">Monthly shipment report CSV for audits</span>
+          <span class="muted">Compliance Reporting · Contoso Health</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Use product data outside the platform</button></span>
+          <span class="meta"><span class="chip">Ravi Patel</span></span>
+        </div>
+        <div class="ticket">
+          <span class="ticket-id">T-104 · <span class="prio">P1</span> · Effort L</span>
+          <span class="t-title">SAML SSO for the admin console</span>
+          <span class="muted">Identity Modernization · Contoso Health</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Sign in with company identity</button></span>
+          <span class="meta"><span class="chip">Ravi Patel</span></span>
+        </div>
+      </section>
+      <section class="col" aria-label="Released"><div class="col-head"><h2>Released</h2><span>1</span></div>
+        <div class="ticket">
+          <span class="ticket-id">T-106 · <span class="prio">P2</span> · Effort S</span>
+          <span class="t-title">Audit log export</span>
+          <span class="muted">Compliance Reporting · Contoso Health</span>
+          <span class="muted">Customer Need: <button class="btn-link" data-go="need">Use product data outside the platform</button></span>
+          <span class="meta"><span class="chip">Ravi Patel</span></span>
+        </div>
+      </section>
     </div>
   </section>
 

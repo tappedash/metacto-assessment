@@ -2,21 +2,29 @@
 // flows, triage resolve/undo, autosave and an aria-live toast.
 
 const navButtons = () => [...document.querySelectorAll(".nav [data-view]")];
-let currentView = document.querySelector(".view.active")?.id;
-let previousView = null;
+const isNav = (id) => navButtons().some((b) => b.dataset.view === id);
+// Views the user walked through in this page (detail views can chain: Ticket -> Need -> back).
+let stack = [document.querySelector(".view.active")?.id].filter(Boolean);
 
-// Detail views (not in the nav) declare their default parent with data-nav and
-// highlight whichever list they were opened from.
+function labelOf(id) {
+  const nav = navButtons().find((b) => b.dataset.view === id);
+  if (nav) return nav.querySelector(".label").textContent;
+  const view = document.getElementById(id);
+  return view?.dataset.label || view?.querySelector("h1")?.textContent || "Back";
+}
+
+// Detail views (not in the nav) declare a default parent with data-nav; the nav highlights
+// the nearest list the user came from.
 function showView(id, { push = true } = {}) {
   const view = document.getElementById(id);
   if (!view || !view.classList.contains("view")) return;
-  if (id !== currentView) {
-    previousView = currentView;
-    currentView = id;
+  if (push && stack[stack.length - 1] !== id) {
+    stack.push(id);
+    history.pushState({ view: id }, "", "#" + id);
   }
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v === view));
-  const navIds = navButtons().map((b) => b.dataset.view);
-  const navId = view.dataset.nav ? (navIds.includes(previousView) ? previousView : view.dataset.nav) : id;
+  const origin = [...stack].reverse().find(isNav);
+  const navId = view.dataset.nav ? origin || view.dataset.nav : id;
   navButtons().forEach((b) => {
     if (b.dataset.view === navId) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
@@ -24,10 +32,9 @@ function showView(id, { push = true } = {}) {
   // Back links say where they go.
   const backLabel = view.querySelector(".back .back-label");
   if (backLabel) {
-    const origin = navButtons().find((b) => b.dataset.view === navId);
-    backLabel.textContent = origin ? origin.querySelector(".label").textContent : "Back";
+    const prev = stack.length > 1 ? stack[stack.length - 2] : view.querySelector("[data-back]")?.dataset.back;
+    backLabel.textContent = labelOf(prev);
   }
-  if (push && location.hash !== "#" + id) history.pushState({ view: id }, "", "#" + id);
   window.scrollTo({ top: 0 });
   const heading = view.querySelector("h1");
   if (heading) {
@@ -38,6 +45,8 @@ function showView(id, { push = true } = {}) {
 
 addEventListener("popstate", () => {
   const id = location.hash.slice(1) || document.querySelector(".view")?.id;
+  if (stack.length > 1 && stack[stack.length - 2] === id) stack.pop();
+  else stack = [id];
   showView(id, { push: false });
 });
 
@@ -110,7 +119,7 @@ document.addEventListener("click", (e) => {
   const back = e.target.closest("[data-back]");
   if (back) {
     // Use browser history when we navigated here inside the page; otherwise the declared parent.
-    if (previousView && history.state && history.state.view) history.back();
+    if (stack.length > 1) history.back();
     else showView(back.dataset.back);
     return;
   }
@@ -143,6 +152,7 @@ if (location.hash) {
   const id = location.hash.slice(1);
   if (document.getElementById(id)?.classList.contains("view")) {
     history.replaceState({ view: id }, "", "#" + id);
+    stack = [id];
     showView(id, { push: false });
     addEventListener("load", () => window.scrollTo({ top: 0 }));
   }

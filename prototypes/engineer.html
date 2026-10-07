@@ -13,8 +13,8 @@
 <aside class="sidebar">
   <a class="brand" href="index.html"><span class="dot"></span>Needs Hub</a>
   <nav class="nav" aria-label="Engineer">
-    <button data-view="tickets" aria-current="page"><span class="ico i-tasks" aria-hidden="true"></span><span class="label">My Tickets</span></button>
-    <button data-view="clients"><span class="ico i-building" aria-hidden="true"></span><span class="label">My Clients</span></button>
+    <button data-view="work" aria-current="page"><span class="ico i-tasks" aria-hidden="true"></span><span class="label">My Work</span></button>
+    <button data-view="projects"><span class="ico i-folder" aria-hidden="true"></span><span class="label">Projects</span></button>
     <button data-view="log"><span class="ico i-pen" aria-hidden="true"></span><span class="label">Log Client Feedback</span></button>
     <button data-view="updates"><span class="ico i-send" aria-hidden="true"></span><span class="label">Approved Updates</span></button>
   </nav>
@@ -26,65 +26,166 @@
 
 <main id="main" tabindex="-1">
 <div class="page">
-  <p class="notice lock">Staffed on <b class="strong">Contoso Health</b> and <b class="strong">Northwind Logistics</b>. You see client details and evidence only for these engagements; other clients appear as counts.</p>
+  <p class="notice lock"><span class="ico i-lock" aria-hidden="true"></span>Staffed on <b class="strong">Contoso Health</b> and <b class="strong">Northwind Logistics</b>. Client details and evidence are visible only for these engagements; other clients appear as counts.</p>
 
-  <!-- ================= MY TICKETS ================= -->
-  <section id="tickets" class="view active" aria-labelledby="h-tickets">
+  <!-- ================= MY WORK (Board | Backlog) ================= -->
+  <section id="work" class="view active" aria-labelledby="h-work">
     <div class="page-head">
       <div>
-        <span class="eyebrow">My tickets</span>
-        <h1 id="h-tickets">Assigned to you</h1>
-        <p class="lede">Move delivery status as work progresses. Each move drafts a customer update for the PM to approve.</p>
+        <span class="eyebrow">My work</span>
+        <h1 id="h-work">Delivery tickets</h1>
+        <p class="lede">Tickets are what we're building. Each one links to the Customer Need that explains why.</p>
+      </div>
+      <fieldset class="segmented">
+        <legend>Layout</legend>
+        <input type="radio" name="layout" id="lay-board" value="board" checked><label for="lay-board">Board</label>
+        <input type="radio" name="layout" id="lay-backlog" value="backlog"><label for="lay-backlog">Backlog</label>
+      </fieldset>
+    </div>
+
+    <div class="toolbar" role="search" aria-label="Filter tickets">
+      <label class="field grow">Search<input type="search" id="f-search" placeholder="Ticket, project or client…"></label>
+      <label class="field">Project<select id="f-project"></select></label>
+      <label class="field">Client<select id="f-client"></select></label>
+      <label class="field">Priority<select id="f-priority"><option value="">All</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></label>
+      <label class="field">Assignee<select id="f-assignee"></select></label>
+      <button class="btn-link" id="f-reset" type="button">Reset</button>
+    </div>
+    <p class="muted" id="f-summary" aria-live="polite" style="margin:-.4rem 0 .9rem"></p>
+
+    <div id="board" class="board four"></div>
+
+    <div id="backlog" class="card flush hidden">
+      <table class="stack-sm">
+        <thead><tr><th scope="col">Ticket</th><th scope="col">Project</th><th scope="col">Client</th><th scope="col">Priority</th><th scope="col">Effort</th><th scope="col">Assignee</th><th scope="col">Status</th></tr></thead>
+        <tbody id="backlog-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= PROJECTS (grouped by client) ================= -->
+  <section id="projects" class="view" aria-labelledby="h-projects">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Projects</span>
+        <h1 id="h-projects">Your engagements</h1>
+        <p class="lede">Client → Project → Ticket. Open a project to see its team, Customer Needs and tickets.</p>
       </div>
     </div>
-    <div class="board three">
-      <div class="col"><div class="col-head"><h2>Planned</h2><span>1</span></div>
-        <div class="ticket mine">
-          <h3 class="t-title"><button class="row-link" data-go="need">Use product data outside the platform</button></h3>
-          <span class="muted">P1 · CSV export first</span>
-          <span class="meta"><span class="chip">Northwind</span><span class="chip">Contoso</span><span class="chip">+6 accounts</span></span>
-          <div class="btn-row" style="margin-top:.6rem"><button class="btn btn-dark btn-sm" data-toast="Moved to In Development · update drafted for the PM">Start development</button></div>
+    <div id="project-groups"></div>
+  </section>
+
+  <!-- ================= PROJECT DETAIL ================= -->
+  <section id="project" class="view" data-nav="projects" aria-labelledby="h-project">
+    <button class="back" data-back="projects"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">Projects</span></button>
+    <div class="page-head">
+      <div>
+        <span class="eyebrow" id="p-client">Client</span>
+        <h1 id="h-project">Project</h1>
+      </div>
+      <span class="chip" id="p-status">Active</span>
+    </div>
+    <dl class="meta-grid card" style="margin-bottom:1.5rem">
+      <div><dt>Client</dt><dd id="p-client-dd"></dd></div>
+      <div><dt>Team</dt><dd id="p-team"></dd></div>
+      <div><dt>Open tickets</dt><dd id="p-open"></dd></div>
+    </dl>
+    <div class="grid split">
+      <div>
+        <div class="section-head"><h2>Delivery tickets</h2></div>
+        <div class="card flush">
+          <table class="stack-sm">
+            <thead><tr><th scope="col">Ticket</th><th scope="col">Priority</th><th scope="col">Assignee</th><th scope="col">Status</th></tr></thead>
+            <tbody id="p-tickets"></tbody>
+          </table>
         </div>
       </div>
-      <div class="col"><div class="col-head"><h2>In Development</h2><span>1</span></div>
-        <div class="ticket mine">
-          <h3 class="t-title"><button class="row-link" data-go="need">Sign in with company identity</button></h3>
-          <span class="muted">P1 · effort L · SAML first</span>
-          <span class="meta"><span class="chip">Contoso</span><span class="chip">+5 accounts</span></span>
-          <div class="btn-row" style="margin-top:.6rem"><button class="btn btn-dark btn-sm" data-toast="Marked Released · update drafted for the PM">Mark released</button></div>
-        </div>
-      </div>
-      <div class="col"><div class="col-head"><h2>Released</h2><span>1</span></div>
-        <div class="ticket mine">
-          <h3 class="t-title"><button class="row-link" data-go="need">Audit log export</button></h3>
-          <span class="muted">Released Sep 30</span>
-        </div>
+      <div>
+        <div class="section-head"><h2>Linked Customer Needs</h2></div>
+        <div class="card flush list" id="p-needs"></div>
+        <div class="section-head" style="margin-top:1.5rem"><h2>Recent approved updates</h2></div>
+        <div class="card flush list" id="p-updates"></div>
       </div>
     </div>
   </section>
 
-  <!-- ================= MY CLIENTS ================= -->
-  <section id="clients" class="view" aria-labelledby="h-clients">
+  <!-- ================= TICKET DETAIL ================= -->
+  <section id="ticket" class="view" data-nav="work" aria-labelledby="h-ticket">
+    <button class="back" data-back="work"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">My Work</span></button>
     <div class="page-head">
       <div>
-        <span class="eyebrow">My clients</span>
-        <h1 id="h-clients">Customer Needs affecting your engagements</h1>
+        <span class="ticket-id" id="t-id"></span>
+        <h1 id="h-ticket">Ticket</h1>
       </div>
+      <div class="btn-row" id="t-move"></div>
     </div>
-    <div class="grid g2">
-      <div class="card flush">
-        <div class="section-head" style="padding:1rem 1.25rem 0"><h2>Contoso Health</h2><span class="chip">Enterprise · Healthcare</span></div>
-        <div class="list">
-          <div class="item item-body"><div><button class="row-link" data-go="need">Sign in with company identity</button><p class="muted">3 Feature Requests from this client</p></div><span class="chip st-dev">In Development</span></div>
-          <div class="item item-body"><div><button class="row-link" data-go="need">Use product data outside the platform</button><p class="muted">2 Feature Requests from this client</p></div><span class="chip st-planned">Planned</span></div>
+
+    <div class="card why-panel" style="margin-bottom:1rem">
+      <span class="eyebrow">Why are we building this?</span>
+      <p><button class="btn-link" style="font-size:1rem" id="t-need-link" data-go="need"></button></p>
+      <p class="muted" id="t-need-statement" style="margin-top:.3rem"></p>
+      <p class="muted" id="t-need-demand" style="margin-top:.3rem"></p>
+    </div>
+
+    <dl class="meta-grid card">
+      <div><dt>Project</dt><dd><button class="btn-link" id="t-project" data-go="project"></button></dd></div>
+      <div><dt>Client</dt><dd><button class="btn-link" id="t-client" data-go="projects"></button></dd></div>
+      <div><dt>Status</dt><dd id="t-status"></dd></div>
+      <div><dt>Priority</dt><dd id="t-priority" class="prio"></dd></div>
+      <div><dt>Assignee</dt><dd id="t-assignee"></dd></div>
+      <div><dt>Effort</dt><dd id="t-effort"></dd></div>
+    </dl>
+
+    <div class="section card">
+      <h2 style="margin-bottom:1rem">Technical notes</h2>
+      <div class="grid g2">
+        <label class="field">Effort estimate
+          <select id="t-effort-input"><option>S</option><option>M</option><option>L</option><option>XL</option></select>
+        </label>
+        <label class="field">Dependencies
+          <input type="text" id="t-deps">
+        </label>
+      </div>
+      <label class="field">Feasibility
+        <textarea id="t-feas"></textarea>
+      </label>
+      <label class="field">Notes
+        <textarea id="t-notes" placeholder="Implementation notes, risks, open questions…"></textarea>
+      </label>
+      <button class="btn btn-primary" data-toast="Technical notes saved · the PM sets final effort">Save notes</button>
+    </div>
+  </section>
+
+  <!-- ================= CUSTOMER NEED (engineer view) ================= -->
+  <section id="need" class="view" data-nav="work" aria-labelledby="h-need">
+    <button class="back" data-back="work"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">My Work</span></button>
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Customer Need</span>
+        <h1 id="h-need">Customer Need</h1>
+        <p class="lede" id="n-statement"></p>
+      </div>
+      <span class="chip" id="n-status"></span>
+    </div>
+    <p class="notice" id="n-demand"></p>
+
+    <div class="grid split">
+      <div>
+        <div class="section-head"><h2>Customer evidence</h2><span class="muted" id="n-visible"></span></div>
+        <div class="card flush list" id="n-evidence"></div>
+        <div class="section">
+          <label class="field" for="comment">Comment for the PM</label>
+          <textarea id="comment" placeholder="Add context the PM should know…"></textarea>
+          <div class="btn-row" style="margin-top:.6rem">
+            <button class="btn btn-ghost btn-sm" data-toast="Comment added">Comment</button>
+            <button class="btn btn-ghost btn-sm" data-toast="Flag sent to PM Triage">Flag: a request belongs elsewhere</button>
+          </div>
         </div>
       </div>
-      <div class="card flush">
-        <div class="section-head" style="padding:1rem 1.25rem 0"><h2>Northwind Logistics</h2><span class="chip">Mid-market · Logistics</span></div>
-        <div class="list">
-          <div class="item item-body"><div><button class="row-link" data-go="need">Use product data outside the platform</button><p class="muted">4 Feature Requests from this client</p></div><span class="chip st-planned">Planned</span></div>
-          <div class="item item-body"><div><p class="strong">Bulk edit carrier rates</p><p class="muted">1 Feature Request · in PM triage</p></div><span class="chip st-review">Under Review</span></div>
-        </div>
+      <div>
+        <div class="section-head"><h2>Delivery</h2></div>
+        <div class="card flush list" id="n-delivery"></div>
+        <p class="muted" style="margin-top:.6rem">Ticket counts don't measure demand. Demand comes from Feature Requests, supporters and accounts.</p>
       </div>
     </div>
   </section>
@@ -95,7 +196,7 @@
       <div>
         <span class="eyebrow">Log client feedback</span>
         <h1 id="h-log">Capture the client's problem, not the fix</h1>
-        <p class="lede">Logged on behalf of the client: it counts toward the client's demand, not yours.</p>
+        <p class="lede">Logged on behalf of the client: it counts toward the client's demand, not yours. It doesn't create a delivery ticket.</p>
       </div>
     </div>
 
@@ -107,10 +208,10 @@
       <div data-step="1">
         <div class="grid g2">
           <label class="field">Client <span class="req" aria-hidden="true">*</span>
-            <select required aria-required="true"><option>Contoso Health</option><option>Northwind Logistics</option></select>
+            <select id="log-client" required aria-required="true"></select>
           </label>
-          <label class="field">Client stakeholder <span class="hint">(optional)</span>
-            <input type="text" value="Dana Ruiz, Compliance Lead">
+          <label class="field">Project / engagement <span class="req" aria-hidden="true">*</span>
+            <select id="log-project" required aria-required="true"></select>
           </label>
         </div>
         <label class="field">What the client asked for <span class="req" aria-hidden="true">*</span>
@@ -120,13 +221,16 @@
           <div class="bubble ai"><span class="ai-tag">Quick question</span>This describes a solution. What is the client trying to get done, and what do they do today?</div>
         </div>
         <div class="grid g2" style="margin-top:.75rem">
-          <label class="field">Client's goal
+          <label class="field">Why <span class="hint">(client's goal)</span>
             <textarea>Their compliance team audits every shipment monthly in Excel. Today they ask us to pull the data manually.</textarea>
           </label>
           <label class="field">Severity for the client
             <select><option>Blocks a workflow</option><option>Costly workaround</option><option>Nice to have</option></select>
           </label>
         </div>
+        <label class="field">Client stakeholder <span class="hint">(optional)</span>
+          <input type="text" value="Dana Ruiz, Compliance Lead">
+        </label>
         <button class="btn btn-primary" data-goto-step="log:2">Find matching Customer Need</button>
       </div>
 
@@ -149,62 +253,15 @@
       </div>
 
       <div data-step="3" class="hidden stack" role="status">
-        <h2>Attached as evidence for Contoso Health</h2>
-        <p>You confirmed a strong match, so it went straight to the Customer Need. No PM triage needed.</p>
-        <div class="btn-row"><button class="btn btn-dark" data-go="need">Open Customer Need</button><button class="btn btn-ghost" data-goto-step="log:1">Log more feedback</button></div>
+        <h2>Attached as evidence</h2>
+        <p>Added to the Customer Need. No PM triage needed because you confirmed a strong match. No delivery ticket was created.</p>
+        <div class="btn-row"><button class="btn btn-dark" data-go="need" data-need="export">Open Customer Need</button><button class="btn btn-ghost" data-goto-step="log:1">Log more feedback</button></div>
       </div>
 
       <div data-step="4" class="hidden stack" role="status">
         <h2>Sent to PM Triage</h2>
-        <p>The PM will decide whether it's a new Customer Need or belongs to an existing one. You'll see it under My Clients.</p>
-        <div class="btn-row"><button class="btn btn-dark" data-go="clients">Go to My Clients</button></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= CUSTOMER NEED + TECH NOTES ================= -->
-  <section id="need" class="view" data-nav="tickets" aria-labelledby="h-need">
-    <button class="back" data-back="tickets"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">Back</span></button>
-    <div class="page-head">
-      <div>
-        <span class="eyebrow">Customer Need</span>
-        <h1 id="h-need">Use product data outside the platform</h1>
-        <p class="lede">Operations and finance teams need to use shipment and report data in their own tools because they reconcile weekly outside the platform.</p>
-      </div>
-      <span class="chip st-planned">Planned · P1</span>
-    </div>
-
-    <div class="grid split">
-      <div>
-        <div class="section-head"><h2>Evidence you can see</h2><span class="muted">6 of 24 Feature Requests</span></div>
-        <div class="card flush list">
-          <div class="item"><p class="muted">Northwind Logistics · client</p><p class="quote">"Export dashboard to Excel." — Finance reconciles shipping costs every Monday.</p></div>
-          <div class="item"><p class="muted">Contoso Health · logged by you</p><p class="quote">"Download the monthly shipment report as CSV." — Compliance audits every shipment in Excel.</p></div>
-          <div class="item"><button class="btn-link" data-toast="Showing all 6 Feature Requests from your clients">Show 4 more from your clients</button></div>
-          <div class="item"><p class="muted">+18 Feature Requests from 6 other accounts · details hidden (not on your engagements)</p></div>
-        </div>
-        <div class="section">
-          <label class="field" for="comment">Comment for the PM</label>
-          <textarea id="comment" placeholder="Add context the PM should know…"></textarea>
-          <div class="btn-row" style="margin-top:.6rem">
-            <button class="btn btn-ghost btn-sm" data-toast="Comment added">Comment</button>
-            <button class="btn btn-ghost btn-sm" data-toast="Flag sent to PM Triage">Flag: a request belongs elsewhere</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 style="margin-bottom:1rem">Technical notes</h2>
-        <label class="field">Effort estimate
-          <select><option>S</option><option selected>M</option><option>L</option><option>XL</option></select>
-        </label>
-        <label class="field">Feasibility
-          <textarea>CSV export reuses the existing report query layer. A BI connector needs an auth model and rate limits.</textarea>
-        </label>
-        <label class="field">Dependencies
-          <input type="text" value="Report query API v2">
-        </label>
-        <button class="btn btn-primary" data-toast="Technical notes saved · the PM sets final effort">Save notes</button>
+        <p>The PM will decide whether it's a new Customer Need or belongs to an existing one.</p>
+        <div class="btn-row"><button class="btn btn-dark" data-go="projects">Back to Projects</button></div>
       </div>
     </div>
   </section>
@@ -218,21 +275,285 @@
         <p class="lede">Forward PM-approved updates to your client contacts. Don't make roadmap promises outside these.</p>
       </div>
     </div>
-    <div class="card flush list">
-      <div class="item item-body">
-        <div><span class="chip st-planned">Planned</span><h2 style="margin-top:.4rem;font:600 .98rem var(--font-sans)">Planned: CSV export for every report</h2><p class="muted">Use product data outside the platform · approved by Sam Kim · Oct 2 · Northwind, Contoso</p></div>
-        <div class="btn-row"><button class="btn btn-ghost btn-sm" data-toast="Link copied">Copy link</button><button class="btn btn-dark btn-sm" data-toast="Forwarded to client contacts">Forward</button></div>
-      </div>
-      <div class="item item-body">
-        <div><span class="chip st-dev">In Development</span><h2 style="margin-top:.4rem;font:600 .98rem var(--font-sans)">SSO is in development: SAML first</h2><p class="muted">Sign in with company identity · approved by Sam Kim · Sep 20 · Contoso</p></div>
-        <div class="btn-row"><button class="btn btn-ghost btn-sm" data-toast="Link copied">Copy link</button><button class="btn btn-dark btn-sm" data-toast="Forwarded to client contacts">Forward</button></div>
-      </div>
-    </div>
+    <div class="card flush list" id="all-updates"></div>
   </section>
 
 </div>
 </main>
 
 <script src="app.js"></script>
+<script>
+  // ---------- prototype data: Client → Project → Ticket, linked to Customer Needs ----------
+  const ME = "Ravi Patel";
+  const CLIENTS = {
+    northwind: { name: "Northwind Logistics", tier: "Mid-market · Logistics" },
+    contoso: { name: "Contoso Health", tier: "Enterprise · Healthcare" },
+  };
+  const PROJECTS = {
+    rm: { name: "Reporting Modernization", client: "northwind", status: ["st-dev", "Active"], team: ["Ravi Patel", "Mia Chen"], needs: ["export"] },
+    ca: { name: "Carrier Automation", client: "northwind", status: ["st-dev", "Active"], team: ["Mia Chen", "Jo Osei"], needs: ["carrier", "delays"] },
+    im: { name: "Identity Modernization", client: "contoso", status: ["st-dev", "Active"], team: ["Ravi Patel", "Jo Osei"], needs: ["sso"] },
+    cr: { name: "Compliance Reporting", client: "contoso", status: ["st-planned", "Planning"], team: ["Ravi Patel"], needs: ["export"] },
+  };
+  const NEEDS = {
+    export: { title: "Use product data outside the platform", status: ["st-planned", "Planned"],
+      statement: "Operations and finance teams need to use shipment and report data in their own tools because they reconcile and audit it outside the platform.",
+      demand: "24 Feature Requests · 52 supporters · 8 accounts",
+      evidence: [["Northwind Logistics · client", "\"Export dashboard to Excel.\" Finance reconciles shipping costs every Monday."],
+                 ["Contoso Health · logged by you", "\"Download the monthly shipment report as CSV.\" Compliance audits every shipment in Excel."],
+                 ["Contoso Health · logged by you", "\"Push weekly KPIs into Power BI.\" Leadership reviews them there."]],
+      visible: 6, hidden: "18 Feature Requests from 6 other accounts" },
+    sso: { title: "Sign in with company identity", status: ["st-dev", "In Development"],
+      statement: "IT teams need to manage access with their corporate identity provider instead of separate passwords.",
+      demand: "11 Feature Requests · 38 supporters · 6 accounts",
+      evidence: [["Contoso Health · client", "\"SAML login for our admin console.\" Security review requires central offboarding."],
+                 ["Contoso Health · client", "\"Provision users from Okta.\" IT spends hours creating accounts by hand."]],
+      visible: 3, hidden: "8 Feature Requests from 5 other accounts" },
+    carrier: { title: "Update many carrier rates at once", status: ["st-review", "Under Review"],
+      statement: "Operations teams need to update many carrier rates at once because rate cards change quarterly; today they edit each lane manually.",
+      demand: "1 Feature Request · 1 supporter · 1 account",
+      evidence: [["Northwind Logistics · client", "\"Bulk edit carrier rates.\" Rates change quarterly for 200+ lanes."]],
+      visible: 1, hidden: "" },
+    delays: { title: "Know about delays before customers do", status: ["st-review", "Under Review"],
+      statement: "Operations teams need early warning when shipments slip past their SLA so they can act before customers complain.",
+      demand: "7 Feature Requests · 17 supporters · 4 accounts",
+      evidence: [["Northwind Logistics · client", "\"Alert us when a shipment misses its SLA.\" We hear about it from customers first."]],
+      visible: 2, hidden: "5 Feature Requests from 3 other accounts" },
+  };
+  const STATUS = { Backlog: "st-review", Planned: "st-planned", "In Development": "st-dev", Released: "st-released" };
+  // Engineers manage delivery states only; Backlog → Planned is a PM decision.
+  const NEXT = { Planned: ["In Development", "Start development"], "In Development": ["Released", "Mark released"] };
+  const TICKETS = [
+    { id: "T-101", title: "CSV export for dashboard reports", project: "rm", need: "export", priority: "P1", effort: "M", assignee: "Ravi Patel", status: "Planned",
+      feas: "Reuses the existing report query layer.", deps: "Report query API v2" },
+    { id: "T-102", title: "Google Sheets connector spike", project: "rm", need: "export", priority: "P2", effort: "L", assignee: "Mia Chen", status: "Backlog",
+      feas: "Needs an OAuth app and rate limiting.", deps: "Google Workspace OAuth" },
+    { id: "T-103", title: "Monthly shipment report CSV for audits", project: "cr", need: "export", priority: "P1", effort: "S", assignee: "Ravi Patel", status: "In Development",
+      feas: "Same export path as T-101 with an audit column set.", deps: "T-101" },
+    { id: "T-104", title: "SAML SSO for the admin console", project: "im", need: "sso", priority: "P1", effort: "L", assignee: "Ravi Patel", status: "In Development",
+      feas: "SAML first; OIDC later.", deps: "Session service refactor" },
+    { id: "T-105", title: "Okta SCIM user provisioning", project: "im", need: "sso", priority: "P2", effort: "M", assignee: "Jo Osei", status: "Backlog",
+      feas: "Depends on SAML identities from T-104.", deps: "T-104" },
+    { id: "T-106", title: "Audit log export", project: "cr", need: "export", priority: "P2", effort: "S", assignee: "Ravi Patel", status: "Released",
+      feas: "Shipped Sep 30.", deps: "None" },
+    { id: "T-107", title: "Bulk rate import from CSV", project: "ca", need: "carrier", priority: "P2", effort: "M", assignee: "Mia Chen", status: "Backlog",
+      feas: "Validate lanes before import; show a dry-run diff.", deps: "Rate service bulk endpoint" },
+    { id: "T-108", title: "SLA breach alert prototype", project: "ca", need: "delays", priority: "P3", effort: "S", assignee: "Jo Osei", status: "Backlog",
+      feas: "Needs carrier ETA feed.", deps: "Carrier ETA integration" },
+  ];
+  const UPDATES = [
+    { need: "export", status: "Planned", title: "Planned: CSV export for every report", meta: "approved by Sam Kim · Oct 2", projects: ["rm", "cr"] },
+    { need: "sso", status: "In Development", title: "SSO is in development: SAML first", meta: "approved by Sam Kim · Sep 20", projects: ["im"] },
+  ];
+
+  // ---------- helpers ----------
+  const $ = (s) => document.querySelector(s);
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const initials = (n) => n.split(" ").map((w) => w[0]).join("");
+  const who = (n) => `<span class="who"><span class="avatar sm" aria-hidden="true">${initials(n)}</span>${esc(n === ME ? n + " (you)" : n)}</span>`;
+  const chip = (s) => `<span class="chip ${STATUS[s]}">${s}</span>`;
+  const projLink = (p) => `<button class="btn-link" data-go="project" data-project="${p}">${esc(PROJECTS[p].name)}</button>`;
+  const ticketLink = (t) => `<button class="row-link" data-go="ticket" data-ticket="${t.id}">${esc(t.title)}</button>`;
+  const needLink = (n) => `<button class="btn-link" data-go="need" data-need="${n}">${esc(NEEDS[n].title)}</button>`;
+  const clientOf = (t) => CLIENTS[PROJECTS[t.project].client].name;
+  const canMove = (t) => t.assignee === ME && NEXT[t.status];
+
+  function moveButton(t) {
+    if (canMove(t)) return `<button class="btn btn-dark btn-sm" data-move="${t.id}">${NEXT[t.status][1]}</button>`;
+    if (t.status === "Backlog") return `<span class="locked">PM moves to Planned</span>`;
+    if (t.assignee !== ME && t.status !== "Released") return `<span class="locked">Assigned to ${esc(t.assignee)}</span>`;
+    return "";
+  }
+
+  // ---------- filters (shared by Board and Backlog) ----------
+  function fillSelect(sel, items, allLabel) {
+    $(sel).innerHTML = `<option value="">${allLabel}</option>` + items.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
+  }
+  fillSelect("#f-project", Object.entries(PROJECTS).map(([k, p]) => [k, p.name]), "All projects");
+  fillSelect("#f-client", Object.entries(CLIENTS).map(([k, c]) => [k, c.name]), "All clients");
+  fillSelect("#f-assignee", [[ME, "Me"], ["Mia Chen", "Mia Chen"], ["Jo Osei", "Jo Osei"]], "Everyone");
+  $("#f-assignee").value = ME;
+
+  function filtered() {
+    const q = $("#f-search").value.trim().toLowerCase();
+    const [p, c, pr, a] = ["#f-project", "#f-client", "#f-priority", "#f-assignee"].map((s) => $(s).value);
+    return TICKETS.filter((t) =>
+      (!p || t.project === p) && (!c || PROJECTS[t.project].client === c) && (!pr || t.priority === pr) && (!a || t.assignee === a) &&
+      (!q || [t.id, t.title, PROJECTS[t.project].name, clientOf(t)].join(" ").toLowerCase().includes(q)));
+  }
+
+  function renderWork() {
+    const list = filtered();
+    $("#f-summary").textContent = `${list.length} of ${TICKETS.length} tickets`;
+    $("#board").innerHTML = Object.keys(STATUS).map((s) => {
+      const cards = list.filter((t) => t.status === s);
+      return `<section class="col" aria-label="${s}"><div class="col-head"><h2>${s}</h2><span>${cards.length}</span></div>
+        ${cards.map((t) => `<div class="ticket${t.assignee === ME ? " mine" : ""}">
+            <span class="ticket-id">${t.id} · <span class="prio">${t.priority}</span> · Effort ${t.effort}</span>
+            <span class="t-title">${ticketLink(t)}</span>
+            <span class="muted">${esc(PROJECTS[t.project].name)} · ${esc(clientOf(t))}</span>
+            <span class="meta">${who(t.assignee)}</span>
+            <div class="btn-row" style="margin-top:.55rem">${moveButton(t)}</div>
+          </div>`).join("") || `<p class="muted" style="padding:.3rem">No tickets</p>`}
+      </section>`;
+    }).join("");
+    $("#backlog-rows").innerHTML = list.map((t) => `<tr>
+        <td class="primary"><span class="ticket-id">${t.id}</span><br>${ticketLink(t)}</td>
+        <td data-label="Project">${projLink(t.project)}</td>
+        <td data-label="Client">${esc(clientOf(t))}</td>
+        <td data-label="Priority" class="prio">${t.priority}</td>
+        <td data-label="Effort">${t.effort}</td>
+        <td data-label="Assignee">${who(t.assignee)}</td>
+        <td data-label="Status">${chip(t.status)}</td></tr>`).join("") ||
+      `<tr><td colspan="7" class="muted">No tickets match these filters. <button class="btn-link" data-reset>Reset filters</button></td></tr>`;
+  }
+
+  ["#f-search", "#f-project", "#f-client", "#f-priority", "#f-assignee"].forEach((s) => $(s).addEventListener("input", renderWork));
+  function resetFilters() {
+    ["#f-search", "#f-project", "#f-client", "#f-priority"].forEach((s) => ($(s).value = ""));
+    $("#f-assignee").value = ME;
+    renderWork();
+  }
+  $("#f-reset").addEventListener("click", resetFilters);
+  document.querySelectorAll('input[name="layout"]').forEach((r) => r.addEventListener("change", () => {
+    const board = $("#lay-board").checked;
+    $("#board").classList.toggle("hidden", !board);
+    $("#backlog").classList.toggle("hidden", board);
+  }));
+
+  // ---------- projects ----------
+  function renderProjects() {
+    $("#project-groups").innerHTML = Object.entries(CLIENTS).map(([ck, c]) => `
+      <div class="client-group" id="client-${ck}">
+        <div class="section-head"><h2>${esc(c.name)}</h2><span class="chip">${esc(c.tier)}</span></div>
+        <div class="card flush list">
+          ${Object.entries(PROJECTS).filter(([, p]) => p.client === ck).map(([pk, p]) => {
+            const open = TICKETS.filter((t) => t.project === pk && t.status !== "Released").length;
+            return `<div class="item item-body"><div>
+                <button class="row-link" data-go="project" data-project="${pk}">${esc(p.name)}</button>
+                <p class="muted">Team: ${p.team.map(esc).join(", ")} · ${open} open tickets</p>
+                <p class="muted">Customer Needs: ${p.needs.map(needLink).join(", ")}</p>
+              </div><span class="chip ${p.status[0]}">${p.status[1]}</span></div>`;
+          }).join("")}
+        </div>
+      </div>`).join("");
+  }
+
+  function renderProject(pk) {
+    const p = PROJECTS[pk];
+    const tickets = TICKETS.filter((t) => t.project === pk);
+    $("#h-project").textContent = p.name;
+    $("#p-client").textContent = CLIENTS[p.client].name;
+    $("#p-client-dd").textContent = CLIENTS[p.client].name + " · " + CLIENTS[p.client].tier;
+    $("#p-team").innerHTML = p.team.map(who).join(" ");
+    $("#p-open").textContent = tickets.filter((t) => t.status !== "Released").length;
+    $("#p-status").className = "chip " + p.status[0];
+    $("#p-status").textContent = p.status[1];
+    $("#p-tickets").innerHTML = tickets.map((t) => `<tr>
+        <td class="primary"><span class="ticket-id">${t.id}</span><br>${ticketLink(t)}</td>
+        <td data-label="Priority" class="prio">${t.priority}</td>
+        <td data-label="Assignee">${who(t.assignee)}</td>
+        <td data-label="Status">${chip(t.status)}</td></tr>`).join("");
+    $("#p-needs").innerHTML = p.needs.map((n) => `<div class="item item-body"><div>${needLink(n)}<p class="muted">${NEEDS[n].demand}</p></div><span class="chip ${NEEDS[n].status[0]}">${NEEDS[n].status[1]}</span></div>`).join("");
+    const ups = UPDATES.filter((u) => u.projects.includes(pk));
+    $("#p-updates").innerHTML = ups.map((u) => `<div class="item"><p class="strong">${esc(u.title)}</p><p class="muted">${esc(u.meta)}</p></div>`).join("") ||
+      `<div class="item muted">No approved updates yet.</div>`;
+  }
+
+  // ---------- ticket ----------
+  let currentTicket = "T-101";
+  function renderTicket(id) {
+    currentTicket = id;
+    const t = TICKETS.find((x) => x.id === id);
+    const n = NEEDS[t.need];
+    $("#t-id").textContent = t.id;
+    $("#h-ticket").textContent = t.title;
+    $("#t-need-link").textContent = n.title;
+    $("#t-need-link").dataset.need = t.need;
+    $("#t-need-statement").textContent = n.statement;
+    $("#t-need-demand").textContent = "Demand: " + n.demand;
+    $("#t-project").textContent = PROJECTS[t.project].name;
+    $("#t-project").dataset.project = t.project;
+    $("#t-client").textContent = clientOf(t);
+    $("#t-client").dataset.client = PROJECTS[t.project].client;
+    $("#t-status").innerHTML = chip(t.status);
+    $("#t-priority").textContent = t.priority;
+    $("#t-assignee").innerHTML = who(t.assignee);
+    $("#t-effort").textContent = t.effort;
+    $("#t-effort-input").value = t.effort;
+    $("#t-feas").value = t.feas;
+    $("#t-deps").value = t.deps;
+    $("#t-move").innerHTML = moveButton(t);
+  }
+
+  // ---------- need (engineer view: evidence only for staffed clients) ----------
+  function renderNeed(key) {
+    const n = NEEDS[key];
+    $("#h-need").textContent = n.title;
+    $("#n-statement").textContent = n.statement;
+    $("#n-status").className = "chip " + n.status[0];
+    $("#n-status").textContent = n.status[1];
+    $("#n-demand").innerHTML = `<b class="strong">Demand</b> ${esc(n.demand)}`;
+    $("#n-visible").textContent = `${n.visible} from your clients`;
+    $("#n-evidence").innerHTML = n.evidence.map(([m, q]) => `<div class="item"><p class="muted">${esc(m)}</p><p class="quote">${esc(q)}</p></div>`).join("") +
+      (n.hidden ? `<div class="item"><p class="muted">+${esc(n.hidden)} · details hidden (not on your engagements)</p></div>` : "");
+    const linked = TICKETS.filter((t) => t.need === key);
+    $("#n-delivery").innerHTML = linked.map((t) => `<div class="item item-body"><div>
+        <span class="ticket-id">${t.id}</span><br>${ticketLink(t)}<p class="muted">${projLink(t.project)} · ${esc(clientOf(t))}</p>
+      </div>${chip(t.status)}</div>`).join("") || `<div class="item muted">No delivery tickets yet.</div>`;
+  }
+
+  // ---------- updates ----------
+  function renderUpdates() {
+    $("#all-updates").innerHTML = UPDATES.map((u) => `<div class="item item-body">
+      <div>${chip(u.status)}<h2 style="margin-top:.4rem;font:600 .98rem var(--font-sans)">${esc(u.title)}</h2>
+        <p class="muted">${needLink(u.need)} · ${esc(u.meta)} · ${u.projects.map(projLink).join(", ")}</p></div>
+      <div class="btn-row"><button class="btn btn-ghost btn-sm" data-toast="Link copied">Copy link</button><button class="btn btn-dark btn-sm" data-toast="Forwarded to client contacts">Forward</button></div>
+    </div>`).join("");
+  }
+
+  // ---------- log feedback: project list follows client ----------
+  fillSelect("#log-client", Object.entries(CLIENTS).map(([k, c]) => [k, c.name]), "Choose client");
+  $("#log-client").value = "contoso";
+  function fillLogProjects() {
+    const ck = $("#log-client").value;
+    const items = Object.entries(PROJECTS).filter(([, p]) => p.client === ck).map(([k, p]) => [k, p.name]);
+    fillSelect("#log-project", items, items.length ? "Choose project" : "Choose a client first");
+    if (ck === "contoso") $("#log-project").value = "cr";
+  }
+  $("#log-client").addEventListener("change", fillLogProjects);
+  fillLogProjects();
+
+  // ---------- wiring: render detail content before app.js switches the view ----------
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-project],[data-ticket],[data-need],[data-client]");
+    if (!el) return;
+    if (el.dataset.ticket) renderTicket(el.dataset.ticket);
+    else if (el.dataset.need) renderNeed(el.dataset.need);
+    else if (el.dataset.project) renderProject(el.dataset.project);
+    if (el.dataset.client) setTimeout(() => document.getElementById("client-" + el.dataset.client)?.scrollIntoView(), 0);
+  }, true);
+
+  document.addEventListener("click", (e) => {
+    const mv = e.target.closest("[data-move]");
+    if (mv) {
+      const t = TICKETS.find((x) => x.id === mv.dataset.move);
+      const [to] = NEXT[t.status];
+      t.status = to;
+      renderWork();
+      renderProjects();
+      if (currentTicket === t.id) renderTicket(t.id);
+      toast(`${t.id} moved to ${to} · AI drafted a customer update for the PM`);
+    }
+    if (e.target.closest("[data-reset]")) resetFilters();
+  });
+
+  renderWork();
+  renderProjects();
+  renderProject("rm");
+  renderTicket("T-101");
+  renderNeed("export");
+  renderUpdates();
+</script>
 </body>
 </html>
