@@ -6,7 +6,7 @@ AI-first Customer Needs platform for product teams in IT / consulting companies.
 
 Clients and engineers submit Feature Requests. AI matches each one to an existing Customer Need (the underlying product problem) while the user waits, so duplicates become evidence instead of noise. PMs compare Demand with Strategic Value, decide with AI-prefilled context, and approved updates flow back to customers.
 
-> **Status: local MVP skeleton.** The infrastructure, data model, AI layer and the synchronous matching path are working and tested. Role-based UI, triage, decisions, tickets and update emails are designed (see `prototypes/`) but not built yet.
+> **Status: local MVP, full workflow implemented.** All four roles (client, engineer, product manager, workspace admin) work end to end with the mock AI (no key) or OpenAI. Sign-in is a local demo picker, not real authentication.
 
 ## Quick start
 
@@ -21,7 +21,7 @@ npm run dev               # http://localhost:3000
 
 | URL | What |
 |---|---|
-| http://localhost:3000 | Status page: seeded Customer Needs + a "Try synchronous matching" form |
+| http://localhost:3000 | Demo sign-in: pick a seeded user to use the app as that role |
 | http://localhost:3000/api/health | Readiness: database, pgvector, AI provider, SMTP |
 | http://localhost:8025 | Mailpit inbox (outbound email preview) |
 
@@ -38,8 +38,28 @@ curl -s -X POST localhost:3000/api/match -H 'content-type: application/json' \
 # {"relation":"same","needId":"...","confidence":0.91,"reason":"Describes the same problem as \"Use product data outside the platform\".",...}
 
 npm test                  # unit tests (no database needed)
-npm run test:integration  # matching against the seeded Postgres (after npm run setup)
+npm run test:integration  # reseeds, then the full workflow end to end (needs npm run setup)
 ```
+
+## Walk through the workflow
+
+Sign in at http://localhost:3000 as each user in turn ("Switch user" sits at the bottom of the sidebar):
+
+1. **Lena Meyer (client)** → Share Feedback: type "Export dashboard to Excel" and click *Find similar needs*. The AI asks why; answer, and it suggests **Use product data outside the platform** ("Is this your need?"). Click *Yes, support this need*. Your request is now evidence.
+2. **Sam Kim (PM)** → Triage holds only uncertain cases. Customer Needs shows Demand and Strategic Value separately (dark mode: very high demand, low strategic value; SSO: medium demand, very high strategic value). Open *Use product data outside the platform*: the AI Brief cites the evidence (R1, R2...), the rubric shows AI scores next to your final scores. Pick a priority, choose *Plan*, write a rationale and *Save decision*. AI drafts a customer update; edit it in Updates and *Approve & send*.
+3. **Mailpit** (http://localhost:8025) shows the emails to requesters, supporters and staffed engineers.
+4. **Lena Meyer** → My Activity → the Need now shows *Planned*, the update and the public rationale.
+5. **Ravi Patel (engineer)** → My Work: *Start development* on T-101. The Need moves to In Development and a new update draft waits for the PM. Open the ticket and follow *Why are we building this?* to the Need and its evidence (only from staffed clients). Log Client Feedback works like Share Feedback, with client and project.
+6. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
+
+| Role | Seeded users | Area |
+|---|---|---|
+| Client | Lena Meyer (Northwind), Dana Ruiz (Contoso), Omar Haddad (Fabrikam), + SMB clients | `/client/share`, `/client/discover`, `/client/activity`, `/client/needs/[id]` |
+| Engineer | Ravi Patel (Northwind + Contoso), Mia Chen, Jo Osei | `/engineer/work`, `/engineer/projects`, `/engineer/log`, `/engineer/updates` |
+| Product Manager | Sam Kim | `/pm/triage`, `/pm/needs`, `/pm/tickets`, `/pm/updates` |
+| Workspace Admin | Alex Lee | `/admin/clients`, `/admin/staffing`, `/admin/users`, `/admin/goals`, `/admin/needs` |
+
+`npm run db:seed` resets the demo data at any time.
 
 ## Scripts
 
@@ -49,7 +69,7 @@ npm run test:integration  # matching against the seeded Postgres (after npm run 
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run typecheck` | TypeScript check |
 | `npm test` | Unit tests (Vitest): mock AI, classification, permissions |
-| `npm run test:integration` | Integration tests against Postgres + pgvector |
+| `npm run test:integration` | Reseeds, then runs the end-to-end workflow and matching tests against Postgres + pgvector + Mailpit |
 | `npm run setup` | `db:up` + `db:migrate` + `db:seed` |
 | `npm run db:up` / `db:down` | Start / stop Postgres and Mailpit (Docker Compose) |
 | `npm run db:generate` | Generate a migration after changing `src/db/schema.ts` |
@@ -92,10 +112,16 @@ After switching providers, run `npm run db:seed` so stored embeddings come from 
 
 ```
 src/
-  app/                    Next.js App Router
-    page.tsx              status page + matching form
+  app/                    Next.js App Router (server components + server actions)
+    (auth)/login/         demo sign-in (session cookie = seeded user id)
+    client/               Share Feedback, Discover, My Activity, public Need page
+    pm/                   Triage, Customer Needs, Need decision screen, Tickets, Updates
+    engineer/             My Work (Board/Backlog), Projects, Tickets, Needs, Log feedback, Updates
+    admin/                Clients, Staffing, Users, Strategic Goals, read-only Needs
+    actions/feedback.ts   intake server actions shared by clients and engineers
     api/health/route.ts   readiness check
-    api/match/route.ts    synchronous matching endpoint
+    api/match/route.ts    synchronous matching endpoint (JSON)
+  components/             shell + sidebar, share flow, UI helpers
   ai/
     types.ts              LanguageModel, EmbeddingProvider interfaces
     mock.ts               deterministic mock provider (+ fixture replay)
@@ -107,7 +133,15 @@ src/
     client.ts             postgres-js + Drizzle client
     seed.ts, reset.ts     demo data, database reset
   domain/
+    session.ts            actor resolution + role guard (every page and action)
     matching.ts           request -> embedding -> top-5 -> classification
+    ai-tasks.ts           AI task schemas, instructions and mock handlers
+    feedback.ts           follow-up, submit, support, Need refinement
+    needs.ts              Demand / Strategic signals, evidence, visibility
+    decisions.ts          AI Brief + rubric (on demand), decisions, update drafts, sending
+    triage.ts             accept / move / create Need / merge
+    delivery.ts           projects, tickets, moves, technical notes
+    admin.ts              clients, staffing, users, strategic goals
     permissions.ts        server-side role / staffing / public-field rules
   lib/
     env.ts                validated configuration
@@ -115,7 +149,7 @@ src/
     mailer.ts             SMTP (Mailpit) sending
 drizzle/                  SQL migrations (0000 enables pgvector)
 tests/unit/               no database needed
-tests/integration/        needs `npm run setup`
+tests/integration/        workflow + matching; needs `npm run setup`
 docs/architecture.md      architecture, tradeoffs, production path
 product_specs/            versioned product spec (latest is the current spec)
 prototypes/               static clickable UI prototypes for all four roles
@@ -139,6 +173,13 @@ Demand comes from Feature Requests, supporters and accounts, never from ticket c
 - Engineers see evidence only for staffed accounts; contract value is Admin/PM only.
 - Engineers move only their own tickets, Planned → In Development → Released; Backlog → Planned is a PM decision.
 - Client users get public Need fields only (`toPublicNeed`).
+
+## Known limitations (MVP)
+
+- Sign-in is a local demo picker; there is no real authentication.
+- AI runs inside requests (no worker): the PM waits a moment when a Need's evidence changed or a decision is saved. Emails are sent in the request with no retries.
+- Splitting a Customer Need is not implemented (merging is).
+- The mock AI matches with a small built-in vocabulary; use `AI_PROVIDER=openai` for real semantic matching.
 
 ## Architecture
 
