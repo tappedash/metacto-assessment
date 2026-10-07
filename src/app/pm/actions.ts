@@ -1,0 +1,99 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { approveAndSend, ensureNeedInsights, saveDecision, type DecisionInput } from "@/domain/decisions";
+import { createTicket, moveTicket } from "@/domain/delivery";
+import { RUBRIC_KEYS } from "@/domain/ai-tasks";
+import type { TicketStatus } from "@/domain/permissions";
+import { requireActor } from "@/domain/session";
+import { acceptSuggestion, createNeed, mergeNeeds, moveToNeed } from "@/domain/triage";
+import { str, withFlash } from "@/lib/flash";
+
+// PM server actions. Each re-checks the role before touching data.
+
+const refresh = () => revalidatePath("/", "layout");
+
+export async function acceptTriageAction(requestId: string) {
+  const actor = await requireActor(["pm"]);
+  await withFlash("/pm/triage", async () => { await acceptSuggestion(actor, requestId); refresh(); return "Accepted into the suggested Customer Need."; });
+}
+
+export async function moveTriageAction(requestId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash("/pm/triage", async () => { await moveToNeed(actor, requestId, str(form, "needId")); refresh(); return "Moved to the chosen Customer Need."; });
+}
+
+export async function createNeedAction(requestId: string) {
+  const actor = await requireActor(["pm"]);
+  await withFlash("/pm/triage", async () => { await createNeed(actor, requestId); refresh(); return "New Customer Need created from this request."; });
+}
+
+export async function regenerateInsightsAction(needId: string) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/needs/${needId}`, async () => { await ensureNeedInsights(needId, actor, { force: true }); refresh(); return "AI Brief and rubric regenerated."; });
+}
+
+export async function saveDecisionAction(needId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  const rubricFinal: Record<string, number> = {};
+  for (const key of [...RUBRIC_KEYS, "effort"]) {
+    const n = Number(form.get(`final_${key}`));
+    if (Number.isFinite(n) && n >= 1 && n <= 5) rubricFinal[key] = Math.round(n);
+  }
+  const input: DecisionInput = {
+    decision: (str(form, "decision") || "plan") as DecisionInput["decision"],
+    priority: (str(form, "priority") || null) as DecisionInput["priority"],
+    rationale: str(form, "rationale"),
+    rubricFinal,
+  };
+  // After a status change the PM goes straight to the drafted update.
+  let target: string;
+  try {
+    const { updateId } = await saveDecision(actor, needId, input);
+    refresh();
+    target = updateId
+      ? `/pm/updates?notice=${encodeURIComponent("Decision saved. AI drafted a customer update for your approval.")}`
+      : `/pm/needs/${needId}?notice=${encodeURIComponent("Decision saved.")}`;
+  } catch (error) {
+    target = `/pm/needs/${needId}?error=${encodeURIComponent((error as Error).message)}`;
+  }
+  redirect(target);
+}
+
+export async function mergeNeedAction(needId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  const targetId = str(form, "targetId");
+  await withFlash(`/pm/needs/${targetId || needId}`, async () => { await mergeNeeds(actor, needId, targetId); refresh(); return "Customer Needs merged; evidence, supporters and tickets combined."; });
+}
+
+export async function createTicketAction(needId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/needs/${needId}`, async () => {
+    const t = await createTicket(actor, {
+      needId, projectId: str(form, "projectId"), title: str(form, "title"),
+      priority: str(form, "priority") || null, effort: str(form, "effort") || null, assigneeId: str(form, "assigneeId") || null,
+    });
+    refresh();
+    return `${t.key} created in the backlog.`;
+  });
+}
+
+export async function moveTicketAction(ticketId: string, to: TicketStatus, back: string) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(back, async () => {
+    const { needStatusChanged } = await moveTicket(actor, ticketId, to);
+    refresh();
+    return needStatusChanged ? "Ticket moved. Customer Need status changed; AI drafted an update for approval." : "Ticket moved.";
+  });
+}
+
+export async function approveUpdateAction(updateId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash("/pm/updates", async () => {
+    const result = await approveAndSend(actor, updateId, { subject: str(form, "subject"), body: str(form, "body") });
+    refresh();
+    if (result.failed.length) throw new Error(`Sent to ${result.sent}; failed for ${result.failed.map((f) => f.email).join(", ")}.`);
+    return `Update approved and emailed to ${result.sent} recipient${result.sent === 1 ? "" : "s"}.`;
+  });
+}

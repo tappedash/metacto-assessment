@@ -48,11 +48,14 @@ async function main() {
   await db.execute(sql`TRUNCATE accounts, users, staffing, strategic_goals, needs, requests, supports,
     decisions, status_updates, projects, project_members, tickets RESTART IDENTITY CASCADE`);
 
-  const [northwind, contoso, fabrikam, tailspin] = await db.insert(s.accounts).values([
+  const [northwind, contoso, fabrikam, tailspin, alpine, bluebird, cedar] = await db.insert(s.accounts).values([
     { name: "Northwind Logistics", tier: "Mid-market", segment: "Logistics", contractValue: 420_000 },
     { name: "Contoso Health", tier: "Enterprise", segment: "Healthcare", contractValue: 1_200_000 },
     { name: "Fabrikam Retail", tier: "Enterprise", segment: "Retail", contractValue: 980_000 },
     { name: "Tailspin Air", type: "prospect", tier: "Enterprise", segment: "Aviation" },
+    { name: "Alpine Outfitters", tier: "SMB", segment: "Retail", contractValue: 60_000 },
+    { name: "Bluebird Couriers", tier: "SMB", segment: "Logistics", contractValue: 45_000 },
+    { name: "Cedar Clinics", tier: "Mid-market", segment: "Healthcare", contractValue: 150_000 },
   ]).returning();
 
   const [alex, sam, ravi, mia, jo, lena, dana, omar] = await db.insert(s.users).values([
@@ -64,6 +67,12 @@ async function main() {
     { name: "Lena Meyer", email: "lena@northwind.example", role: "client", accountId: northwind.id },
     { name: "Dana Ruiz", email: "dana@contoso.example", role: "client", accountId: contoso.id },
     { name: "Omar Haddad", email: "omar@fabrikam.example", role: "client", accountId: fabrikam.id },
+  ]).returning();
+  const [ana, ben, cara, dev] = await db.insert(s.users).values([
+    { name: "Ana Torres", email: "ana@alpine.example", role: "client", accountId: alpine.id },
+    { name: "Ben Okafor", email: "ben@bluebird.example", role: "client", accountId: bluebird.id },
+    { name: "Cara Lind", email: "cara@cedar.example", role: "client", accountId: cedar.id },
+    { name: "Dev Shah", email: "dev@fabrikam.example", role: "client", accountId: fabrikam.id },
   ]).returning();
   void alex;
 
@@ -88,13 +97,18 @@ async function main() {
   const need = Object.fromEntries(keys.map((k, i) => [k, needRows[i]])) as Record<NeedKey, (typeof needRows)[number]>;
 
   // Verbatim Feature Requests (evidence), linked and confirmed.
-  const REQUESTS: { title: string; why: string; account: typeof northwind; by: typeof lena; need: NeedKey; onBehalf?: boolean; link: "same" | "related" }[] = [
+  // daysAgo spreads requests over 60 days so the 30-day demand trend is meaningful.
+  const REQUESTS: { title: string; why: string; account: typeof northwind; by: typeof lena; need: NeedKey; onBehalf?: boolean; link: "same" | "related"; daysAgo?: number }[] = [
     { title: "Export dashboard to Excel", why: "Our finance team reconciles shipping costs every Monday in their own spreadsheets. Today I copy numbers by hand.", account: northwind, by: lena, need: "export", link: "same" },
-    { title: "CSV download of all orders", why: "We join it with ERP data for month-end close.", account: fabrikam, by: omar, need: "export", link: "same" },
+    { title: "CSV download of all orders", why: "We join it with ERP data for month-end close.", account: fabrikam, by: omar, need: "export", link: "same", daysAgo: 45 },
     { title: "Push weekly KPIs into Power BI", why: "Leadership reviews KPIs in Power BI; an analyst rebuilds them every Monday.", account: contoso, by: ravi, need: "export", onBehalf: true, link: "related" },
     { title: "SAML login for our admin console", why: "Security review requires central offboarding.", account: contoso, by: dana, need: "sso", link: "same" },
     { title: "Provision users from Okta", why: "IT spends hours creating accounts by hand.", account: contoso, by: jo, need: "sso", onBehalf: true, link: "related" },
-    { title: "Dark mode please", why: "Easier on the eyes during night shifts.", account: fabrikam, by: omar, need: "dark", link: "same" },
+    { title: "Dark mode for the dashboard", why: "Easier on the eyes during night shifts.", account: northwind, by: lena, need: "dark", link: "same", daysAgo: 50 },
+    { title: "Night theme for the dashboard", why: "Our dispatchers work late and the white screen is harsh.", account: alpine, by: ana, need: "dark", link: "same" },
+    { title: "Dark mode", why: "Matches the rest of our tools.", account: bluebird, by: ben, need: "dark", link: "same" },
+    { title: "Darker colour scheme", why: "Staff on night shifts find it easier to read.", account: cedar, by: cara, need: "dark", link: "same" },
+    { title: "SSO with Azure AD", why: "Our security policy requires central offboarding for every vendor.", account: fabrikam, by: dev, need: "sso", link: "same" },
     { title: "Alert us when a shipment misses its SLA", why: "We hear about delays from customers first.", account: northwind, by: lena, need: "delays", link: "same" },
     { title: "Bulk edit carrier rates", why: "Rates change quarterly for 200+ lanes and we update them one by one.", account: northwind, by: lena, need: "rates", link: "same" },
   ];
@@ -103,13 +117,18 @@ async function main() {
     title: r.title, why: r.why, accountId: r.account.id, submittedBy: r.by.id, onBehalf: r.onBehalf ?? false,
     needId: need[r.need].id, linkType: r.link, linkConfidence: r.link === "same" ? 0.92 : 0.64,
     linkReason: "Seeded demo link", linkState: "confirmed" as const, embedding: requestVectors[i],
+    createdAt: new Date(Date.now() - (r.daysAgo ?? 5) * 86_400_000),
   })));
 
   await db.insert(s.supports).values([
     { userId: lena.id, needId: need.export.id },
     { userId: omar.id, needId: need.export.id },
     { userId: dana.id, needId: need.sso.id },
-    { userId: omar.id, needId: need.dark.id },
+    { userId: lena.id, needId: need.dark.id },
+    { userId: ana.id, needId: need.dark.id },
+    { userId: ben.id, needId: need.dark.id },
+    { userId: cara.id, needId: need.dark.id },
+    { userId: dev.id, needId: need.sso.id },
     { userId: lena.id, needId: need.delays.id },
   ]);
 

@@ -109,7 +109,7 @@ export async function needEvidence(needId: string, actor: Actor) {
 export async function needTickets(needId: string) {
   return getDb()
     .select({
-      id: tickets.id, key: tickets.key, title: tickets.title, status: tickets.status, priority: tickets.priority,
+      id: tickets.id, key: tickets.key, title: tickets.title, status: tickets.status, priority: tickets.priority, effort: tickets.effort,
       projectId: projects.id, projectName: projects.name, accountId: accounts.id, accountName: accounts.name, assignee: users.name,
     })
     .from(tickets)
