@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { accounts, needs, projects, projectStatuses, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
 import { canViewAccountEvidence, type Actor } from "./permissions";
@@ -133,9 +133,4 @@ export async function sentUpdates(needId: string) {
 export async function isSupporting(userId: string, needId: string) {
   const [row] = await getDb().select().from(supports).where(and(eq(supports.userId, userId), eq(supports.needId, needId)));
   return Boolean(row);
-}
-
-export async function needsByIds(ids: string[]) {
-  if (!ids.length) return [];
-  return getDb().select().from(needs).where(inArray(needs.id, ids));
 }

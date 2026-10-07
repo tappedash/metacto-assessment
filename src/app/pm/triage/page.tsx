@@ -5,6 +5,7 @@ import { getDb } from "@/db/client";
 import { needs } from "@/db/schema";
 import { autoMatchedCount, listTriage } from "@/domain/triage";
 import { acceptTriageAction, createNeedAction, moveTriageAction } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -62,9 +63,9 @@ export default async function TriagePage({ searchParams }: { searchParams: Searc
                   </div>
                   <div className="actions">
                     {it.suggestedNeedId && (
-                      <form action={acceptTriageAction.bind(null, it.id)}><button className="btn btn-dark btn-sm" type="submit" style={{ width: "100%" }}>Accept</button></form>
+                      <form action={acceptTriageAction.bind(null, it.id)}><SubmitButton className="btn btn-dark btn-sm" style={{ width: "100%" }} pending="Adding…">Accept</SubmitButton></form>
                     )}
-                    <form action={createNeedAction.bind(null, it.id)}><button className={`btn btn-sm ${it.suggestedNeedId ? "btn-ghost" : "btn-dark"}`} type="submit" style={{ width: "100%" }}>Create new Need</button></form>
+                    <form action={createNeedAction.bind(null, it.id)}><SubmitButton className={`btn btn-sm ${it.suggestedNeedId ? "btn-ghost" : "btn-dark"}`} style={{ width: "100%" }} pending="AI is drafting…">Create new Need</SubmitButton></form>
                     <form action={moveTriageAction.bind(null, it.id)} className="stack">
                       <label className="sr-only" htmlFor={`move-${it.id}`}>Move to Customer Need</label>
                       <select id={`move-${it.id}`} name="needId" required style={{ marginTop: 0 }}>

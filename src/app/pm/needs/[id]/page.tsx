@@ -12,6 +12,7 @@ import { engineers } from "@/domain/delivery";
 import { getNeed, needEvidence, needSignals, needTickets, sentUpdates } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
 import { assignNeedOwnerAction, createTicketAction, mergeNeedAction, regenerateInsightsAction, saveDecisionAction, splitNeedAction } from "../../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
         <div className="ai-panel">
           <div className="item-head" style={{ justifyContent: "space-between" }}>
             <span className="ai-tag">AI Brief</span>
-            <form action={regenerateInsightsAction.bind(null, id)}><button className="btn-link" type="submit">Regenerate</button></form>
+            <form action={regenerateInsightsAction.bind(null, id)}><SubmitButton className="btn-link" pending="Regenerating…">Regenerate</SubmitButton></form>
           </div>
           {insights ? (
             <>
@@ -211,7 +212,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
             <label className="field" htmlFor="rationale">Rationale <span className="req" aria-hidden="true">*</span> <span className="hint">(required · shown to customers)</span>
               <textarea id="rationale" name="rationale" required defaultValue={need.publicRationale ?? ""} placeholder="Why this decision? Customers will see this." />
             </label>
-            <button className="btn btn-primary" type="submit">Save decision</button>
+            <SubmitButton pending="Saving · AI drafting update…">Save decision</SubmitButton>
           </div>
         </div>
       </form>
@@ -255,7 +256,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
               </label>
             </div>
             <label className="check"><input type="checkbox" name="jira" /> Also create a Jira issue <span className="muted">(only for projects connected to Jira)</span></label>
-            <button className="btn btn-dark btn-sm" type="submit">Create in backlog</button>
+            <SubmitButton className="btn btn-dark btn-sm" pending="Creating…">Create in backlog</SubmitButton>
           </form>
         </details>
       </div>

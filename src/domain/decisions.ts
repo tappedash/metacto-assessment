@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
-import { accounts, decisions, needs, requests, staffing, statusUpdates, strategicGoals, supports, users } from "@/db/schema";
+import { decisions, needs, requests, staffing, statusUpdates, strategicGoals, supports, users } from "@/db/schema";
 import {
   AI_BRIEF, AI_BRIEF_INSTRUCTIONS, AiBrief, DRAFT_UPDATE, DRAFT_UPDATE_INSTRUCTIONS, DraftUpdate,
   RUBRIC, RUBRIC_INSTRUCTIONS, Rubric,
@@ -171,10 +171,4 @@ export async function draftCount(): Promise<number> {
 export async function recipientSummary(needId: string) {
   const r = await updateRecipients(needId);
   return { customers: r.filter((x) => x.kind === "customer").length, engineers: r.filter((x) => x.kind === "engineer").length };
-}
-
-export async function accountNames(ids: string[]) {
-  if (!ids.length) return new Map<string, string>();
-  const rows = await getDb().select({ id: accounts.id, name: accounts.name }).from(accounts).where(inArray(accounts.id, ids));
-  return new Map(rows.map((r) => [r.id, r.name]));
 }

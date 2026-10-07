@@ -30,7 +30,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Sear
   const pms = people.filter((u) => u.role === "pm" && u.active);
   return (
     <>
-      <PageHead eyebrow="Clients" title="Client accounts" lede="Tier, segment and contract value feed Strategic Value. Contract value is visible to Admin and PM only. Open an account to edit it, see its projects and people, or invite customer users." />
+      <PageHead eyebrow="Accounts" title="Client accounts" lede="Tier, segment and contract value feed Strategic Value. Contract value is visible to Admin and PM only. Open an account to edit it, see its projects and people, or invite customer users." />
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
       <div className="stack">
         {rows.map((a) => (

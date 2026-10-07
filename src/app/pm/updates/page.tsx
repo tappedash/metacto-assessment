@@ -2,6 +2,7 @@ import Link from "next/link";
 import { NeedStatus, Notice, PageHead, param, type SearchParams } from "@/components/ui";
 import { listUpdates, recipientSummary } from "@/domain/decisions";
 import { approveUpdateAction } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function UpdatesPage({ searchParams }: { searchParams: Sear
               <label className="field">Subject<input type="text" name="subject" defaultValue={d.subject} required /></label>
               <label className="field">Message<textarea name="body" defaultValue={d.body} style={{ minHeight: 150 }} required /></label>
               <p className="muted" style={{ marginBottom: ".8rem" }}>Goes to {recipients[i].customers} requesters & supporters and {recipients[i].engineers} engineers on affected clients.</p>
-              <button className="btn btn-primary" type="submit">Approve &amp; send</button>
+              <SubmitButton pending="Sending…">Approve &amp; send</SubmitButton>
             </form>
           ))}
           {!drafts.length && <div className="card empty"><h2>No drafts waiting</h2><p className="muted">Save a decision on a Customer Need and AI will draft the update here.</p></div>}
