@@ -39,12 +39,14 @@ dev: ## Start the dev server on PORT (or the next free port)
 	$(call auth-url-for,$$port); \
 	printf "\n$(OK)Needs Hub$(END) → $(BOLD)http://localhost:$$port$(END)   (Mailpit: $(MAILPIT_URL))\n"; \
 	printf "$(DIM)Sign in with a demo email (magic link arrives in Mailpit); Ctrl+C to stop. See README.$(END)\n\n"; \
+	echo $$port > .dev-port; \
 	BETTER_AUTH_URL=http://localhost:$$port npx next dev -p $$port
 
 start: setup build ## Production build, then serve it on PORT (or the next free port)
 	@port=$$($(MAKE) -s free-port); \
 	$(call auth-url-for,$$port); \
 	printf "\n$(OK)Needs Hub (production build)$(END) → $(BOLD)http://localhost:$$port$(END)\n\n"; \
+	echo $$port > .dev-port; \
 	BETTER_AUTH_URL=http://localhost:$$port npx next start -p $$port
 
 # ---------------------------------------------------------------- setup steps
@@ -114,9 +116,12 @@ build: ## Production build
 
 # ---------------------------------------------------------------- operations
 
-health: ## Call /api/health on the running app (PORT=... if not 3000)
-	@curl -fsS "http://localhost:$(strip $(PORT))/api/health" | (command -v python3 >/dev/null && python3 -m json.tool || cat) \
-		|| { printf "$(ERR)✗ App not reachable on port $(strip $(PORT)). Run make dev, or pass PORT=<port>.$(END)\n"; exit 1; }
+# The port `make dev` / `make start` actually used (another app may hold 3000); PORT=... overrides.
+APP_PORT = $(if $(filter command line,$(origin PORT)),$(strip $(PORT)),$(or $(shell cat .dev-port 2>/dev/null),$(strip $(PORT))))
+
+health: ## Call /api/health on the running app (the port make dev chose, or PORT=...)
+	@curl -fsS "http://localhost:$(APP_PORT)/api/health" | (command -v python3 >/dev/null && python3 -m json.tool || cat) \
+		|| { printf "$(ERR)✗ App not reachable on port $(APP_PORT). Run make dev, or pass PORT=<port>.$(END)\n"; exit 1; }
 
 status: ## Show container status
 	@docker compose ps

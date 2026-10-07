@@ -247,7 +247,7 @@ export async function seed({ quiet = false } = {}) {
     .where(eq(s.tickets.key, "T-107"));
   await importGithubActivity(ca.id, demoGithubActivity("northwind/carrier-rates"));
 
-  if (!quiet) console.log(`Seeded ${needRows.length} Customer Needs, ${REQUESTS.length} Feature Requests, 4 projects, 8 tickets.`);
+  if (!quiet) console.log(`Seeded ${needRows.length} Customer Needs, ${REQUESTS.length + 1} Feature Requests (1 in Triage), 4 projects, 8 tickets.`);
 }
 
 // Run directly: `tsx src/db/seed.ts`.

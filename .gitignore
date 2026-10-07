@@ -10,3 +10,6 @@ coverage/
 
 # uploaded files (local MVP storage)
 storage/
+
+# port chosen by make dev (used by make health)
+.dev-port
