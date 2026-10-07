@@ -19,7 +19,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
     "db:reset": "tsx src/db/reset.ts && npm run db:migrate && npm run db:seed",
-    "setup": "npm run db:up && npm run db:migrate && npm run db:seed"
+    "setup": "npm run db:up && npm run db:migrate && npm run db:seed",
+    "eval:matching": "tsx scripts/eval-matching.ts"
   },
   "dependencies": {
     "better-auth": "^1.7.7",

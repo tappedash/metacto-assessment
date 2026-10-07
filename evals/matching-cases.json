@@ -1,0 +1,25 @@
+{
+  "description": "Curated requests for the AI matching pipeline, against the seeded Customer Needs. expectedNeed is a seeded Need title (null for new).",
+  "cases": [
+    { "id": "dup-1", "kind": "obvious duplicate", "title": "Export dashboard to Excel", "why": "Finance reconciles shipping costs in spreadsheets every Monday; today we copy numbers by hand.", "expected": "same", "expectedNeed": "Use product data outside the platform" },
+    { "id": "dup-2", "kind": "obvious duplicate", "title": "Download all shipments as CSV", "why": "We need the raw data in our own reporting tools for month-end close.", "expected": "same", "expectedNeed": "Use product data outside the platform" },
+    { "id": "dup-3", "kind": "obvious duplicate", "title": "SAML single sign-on", "why": "Security requires central offboarding through our identity provider.", "expected": "same", "expectedNeed": "Sign in with company identity" },
+    { "id": "dup-4", "kind": "obvious duplicate", "title": "Night theme", "why": "Dispatchers on night shifts find the white dashboard too bright.", "expected": "same", "expectedNeed": "Dark mode for the dashboard" },
+    { "id": "dup-5", "kind": "obvious duplicate", "title": "Alert when a shipment breaches its SLA", "why": "We hear about late shipments from our customers before we see them.", "expected": "same", "expectedNeed": "Know about delays before customers do" },
+    { "id": "dup-6", "kind": "obvious duplicate", "title": "Bulk edit carrier rates", "why": "Rate cards change every quarter for hundreds of lanes and we edit them one by one.", "expected": "same", "expectedNeed": "Update many carrier rates at once" },
+    { "id": "rel-1", "kind": "related but different", "title": "Push weekly KPIs into Power BI automatically", "why": "Leadership reviews KPIs in Power BI; a scheduled feed would replace the manual export.", "expected": "related", "expectedNeed": "Use product data outside the platform" },
+    { "id": "rel-2", "kind": "related but different", "title": "Provision users automatically from Okta", "why": "IT spends hours creating and removing accounts by hand.", "expected": "related", "expectedNeed": "Sign in with company identity" },
+    { "id": "rel-3", "kind": "related but different", "title": "Predict ETA slips from weather data", "why": "We want to anticipate late deliveries days ahead, not just get an SLA alert.", "expected": "related", "expectedNeed": "Know about delays before customers do" },
+    { "id": "rel-4", "kind": "related but different", "title": "Compare carrier rate cards side by side", "why": "Before uploading new rates we want to see which lanes got more expensive.", "expected": "related", "expectedNeed": "Update many carrier rates at once" },
+    { "id": "rel-5", "kind": "related but different", "title": "Scheduled audit report by email", "why": "Our auditors want a monthly report emailed to them without logging in.", "expected": "related", "expectedNeed": "Use product data outside the platform" },
+    { "id": "new-1", "kind": "genuinely new", "title": "Mobile app for drivers", "why": "Drivers need to confirm pickups from their phone at the dock.", "expected": "new", "expectedNeed": null },
+    { "id": "new-2", "kind": "genuinely new", "title": "Multi-language interface", "why": "Our warehouse staff in Poland and Spain struggle with an English-only UI.", "expected": "new", "expectedNeed": null },
+    { "id": "new-3", "kind": "genuinely new", "title": "Carbon footprint per shipment", "why": "Our sustainability team must report CO2 emissions per customer every quarter.", "expected": "new", "expectedNeed": null },
+    { "id": "new-4", "kind": "genuinely new", "title": "Invoice disputes workflow", "why": "Billing disagreements are handled over email and get lost.", "expected": "new", "expectedNeed": null },
+    { "id": "new-5", "kind": "genuinely new", "title": "Warehouse slot booking", "why": "Trucks arrive at the same time and queue for hours at the gate.", "expected": "new", "expectedNeed": null },
+    { "id": "amb-1", "kind": "ambiguous", "title": "Better reports", "why": "The reports page doesn't give us what we need.", "expected": "related", "expectedNeed": "Use product data outside the platform" },
+    { "id": "amb-2", "kind": "ambiguous", "title": "Easier login", "why": "People forget their passwords all the time.", "expected": "related", "expectedNeed": "Sign in with company identity" },
+    { "id": "amb-3", "kind": "ambiguous", "title": "Notifications", "why": "We want to be told when something important happens.", "expected": "new", "expectedNeed": null },
+    { "id": "amb-4", "kind": "ambiguous", "title": "Faster updates for carriers", "why": "Carriers complain it takes us too long to change things.", "expected": "related", "expectedNeed": "Update many carrier rates at once" }
+  ]
+}
