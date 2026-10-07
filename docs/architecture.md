@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Scope | Local MVP: the simplest architecture that proves the end-to-end workflow |
-| Product spec | `product_specs/mvp_spec_20261007-165228.md` (v0.3) |
+| Product spec | latest file in `product_specs/` (v0.4 adds attachments + client Assistant) |
 | AI provider | OpenAI (single vendor), with a deterministic mock for running without a key |
 
 ## Goals
@@ -111,6 +111,12 @@ Two separate layers that meet only through Ticket → Customer Need:
 
 - Product intelligence: Feature Request → Customer Need (+ supports, decisions, status updates)
 - Delivery: Account (client) → Project → Ticket, with ticket statuses configured per project (each mapped to a fixed stage that the rules use)
+
+## Attachments and the client Assistant
+
+- **Files:** uploaded to `/api/attachments`, stored on local disk (`storage/uploads`, gitignored) for the MVP. Text is extracted (unpdf, mammoth, exceljs); screenshots are passed as images to the OpenAI provider. AI writes a one-line "AI reviewed your attachment" summary at upload. Downloads are served with a sandboxing Content-Security-Policy.
+- **Understanding:** on *Continue*, the description, details and file excerpts go to one structured AI task (summary, goal, workaround, impact, terms). The customer's corrections drive matching and become the evidence text.
+- **Assistant:** a server action builds a per-customer context (own requests, supported Needs, public Need fields, approved updates, own files, plus Needs related to the question by vector search) and asks a structured AI task for `{answer, links}`. Links outside that context are dropped. Nothing is persisted and nothing is submitted from the Assistant.
 
 ## Permissions
 

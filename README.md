@@ -59,10 +59,10 @@ npm run test:integration  # reseeds, then the full workflow end to end (needs np
 
 Sign in at http://localhost:3000 as each user in turn ("Switch user" sits at the bottom of the sidebar):
 
-1. **Lena Meyer (client)** → Share Feedback: type "Export dashboard to Excel" and click *Find similar needs*. The AI asks why; answer, and it suggests **Use product data outside the platform** ("Is this your need?"). Click *Yes, support this need*. Your request is now evidence.
+1. **Lena Meyer (client)** → Share Feedback: drop `docs/demo/weekly-report-process.pdf` (or `weekly-shipment-report.csv`), optionally add a line of text, and click *Continue*. AI shows "AI reviewed your attachment" and "AI understood" (goal, current workaround, pain); correct anything and click *Yes, find matching needs*. It suggests **Use product data outside the platform** ("Is this your need?"). Click *Yes, support this need*: your request and file are now evidence.
 2. **Sam Kim (PM)** → Triage holds only uncertain cases. Customer Needs shows Demand and Strategic Value separately (dark mode: very high demand, low strategic value; SSO: medium demand, very high strategic value). Open *Use product data outside the platform*: the AI Brief cites the evidence (R1, R2...), the rubric shows AI scores next to your final scores. Pick a priority, choose *Plan*, write a rationale and *Save decision*. AI drafts a customer update; edit it in Updates and *Approve & send*.
 3. **Mailpit** (http://localhost:8025) shows the emails to requesters, supporters and staffed engineers.
-4. **Lena Meyer** → My Activity → the Need now shows *Planned*, the update and the public rationale.
+4. **Lena Meyer** → My Activity → the Need now shows *Planned*, the update and the public rationale. Click **✦ Ask Needs Hub** (top right) and ask "What happened to my Excel request?" or "What's the latest update?". You can also attach a file there: it suggests the matching Need and offers *Share this as feedback* (nothing is submitted without you).
 5. **Sam Kim (PM)** → Projects: each project has its own ticket statuses. *Identity Modernization* uses Backlog → Planned → Build → Security review → UAT → Client sign-off → Live. Add, rename, reorder or remove statuses; each belongs to a stage (Backlog, Planned, In progress, Done) that keeps permissions and Need progress working.
 6. **Ravi Patel (engineer)** → My Work: move T-101 from Planned to *In Development*. The Need moves to In Development and a new update draft waits for the PM. Open the ticket and follow *Why are we building this?* to the Need and its evidence (only from staffed clients). Log Client Feedback works like Share Feedback, with client and project.
 7. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
@@ -157,6 +157,8 @@ src/
     triage.ts             accept / move / create Need / merge
     delivery.ts           projects, tickets, moves, technical notes
     workflow.ts           per-project ticket statuses (stages, validation, PM edits)
+    attachments.ts        uploads: storage, AI reading, permissions, evidence links
+    assistant.ts          client "Ask Needs Hub": grounded context, answers, link checks
     admin.ts              clients, staffing, users, strategic goals
     permissions.ts        server-side role / staffing / public-field rules
   lib/
@@ -195,7 +197,8 @@ Demand comes from Feature Requests, supporters and accounts, never from ticket c
 - Sign-in is a local demo picker; there is no real authentication.
 - AI runs inside requests (no worker): the PM waits a moment when a Need's evidence changed or a decision is saved. Emails are sent in the request with no retries.
 - Splitting a Customer Need is not implemented (merging is).
-- The mock AI matches with a small built-in vocabulary; use `AI_PROVIDER=openai` for real semantic matching.
+- The mock AI matches with a small built-in vocabulary and reads files with simple rules; use `AI_PROVIDER=openai` for real semantic matching, better file understanding and screenshot reading.
+- Uploaded files are stored on local disk (`storage/`, gitignored); `make clean` does not delete them.
 
 ## Architecture
 
