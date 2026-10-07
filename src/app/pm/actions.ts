@@ -8,6 +8,7 @@ import { RUBRIC_KEYS } from "@/domain/ai-tasks";
 import { requireActor } from "@/domain/session";
 import { acceptSuggestion, createNeed, mergeNeeds, moveToNeed } from "@/domain/triage";
 import { addComment } from "@/domain/tracking";
+import { reviewRework } from "@/domain/validation";
 import { addStatus, moveStatus, removeStatus, updateStatus, type Stage } from "@/domain/workflow";
 import { str, withFlash } from "@/lib/flash";
 
@@ -96,6 +97,16 @@ export async function addTicketCommentAction(ticketId: string, form: FormData) {
     await addComment(actor, ticketId, str(form, "body"), visibility);
     refresh();
     return visibility === "customer" ? "Update posted. Customers following this can see it." : "Internal update posted.";
+  });
+}
+
+export async function reviewReworkAction(ticketId: string, validationId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/tickets/${ticketId}`, async () => {
+    const decision = str(form, "decision") === "reopen" ? "reopen" : "decline";
+    await reviewRework(actor, validationId, decision, str(form, "note"));
+    refresh();
+    return decision === "reopen" ? "Ticket reopened. The customer sees it back In Development." : "Decision sent to the customer.";
   });
 }
 

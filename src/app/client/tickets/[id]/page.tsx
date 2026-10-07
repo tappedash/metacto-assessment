@@ -45,9 +45,10 @@ export default async function ClientTicketPage({ params, searchParams }: { param
               {[...timeline].reverse().map((e, i) => (
                 <li key={e.id} className={i === 0 ? "now" : "done"}>
                   <span className="strong">
-                    {e.kind === "status" && e.publicStatus ? `Moved to ${PUBLIC_STATUS[e.publicStatus].label}` : e.kind === "validation" ? "Your feedback" : "Update from the team"}
+                    {e.kind === "status" && e.publicStatus ? `Moved to ${PUBLIC_STATUS[e.publicStatus].label}`
+                      : e.kind === "validation" && e.authorRole === "client" ? `Feedback from ${e.author ?? "your team"}` : "Update from the team"}
                   </span>
-                  <br /><span className="when">{day(e.createdAt)}{e.kind === "comment" && e.author ? ` · ${e.author}` : ""}</span>
+                  <br /><span className="when">{day(e.createdAt)}{e.kind !== "status" && e.author && e.authorRole !== "client" ? ` · ${e.author}` : ""}</span>
                   {e.body && <p style={{ whiteSpace: "pre-line", marginTop: ".25rem" }}>{e.body}</p>}
                 </li>
               ))}

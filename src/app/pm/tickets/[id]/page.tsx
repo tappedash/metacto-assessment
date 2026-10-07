@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, Notice, TicketStatus, param, type SearchParams } from "@/components/ui";
 import { TicketMove } from "@/components/ticket-move";
+import { ReworkReview } from "@/components/rework-review";
 import { CommentForm, TeamTimeline } from "@/components/ticket-timeline";
 import { getTicket } from "@/domain/delivery";
 import { requireActor } from "@/domain/session";
 import { PUBLIC_STATUS, publicStatusOf, teamTimeline } from "@/domain/tracking";
+import { reworkRequests } from "@/domain/validation";
 import { projectWorkflow } from "@/domain/workflow";
-import { addTicketCommentAction, moveTicketAction } from "../../actions";
-import { ReworkReview } from "./rework-review";
+import { addTicketCommentAction, moveTicketAction, reviewReworkAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function PmTicketPage({ params, searchParams }: { params: P
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [workflow, events] = await Promise.all([projectWorkflow(ticket.projectId), teamTimeline(id)]);
+  const [workflow, events, reworks] = await Promise.all([projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id })]);
   const current = workflow.find((s) => s.id === ticket.statusId)!;
   const pub = publicStatusOf(current);
 
@@ -39,7 +40,7 @@ export default async function PmTicketPage({ params, searchParams }: { params: P
         <div><dt>Customers see</dt><dd>{pub ? PUBLIC_STATUS[pub].label : "Nothing yet (Backlog)"}</dd></div>
         <div><dt>Assignee</dt><dd>{ticket.assignee ?? "Unassigned"}</dd></div>
       </dl>
-      <ReworkReview ticketId={id} actor={actor} back={`/pm/tickets/${id}`} />
+      <ReworkReview reworks={reworks} action={reviewReworkAction.bind(null, id)} />
       <div className="section grid split">
         <div className="card"><h2 style={{ marginBottom: ".9rem" }}>Updates</h2><TeamTimeline events={events} /></div>
         <div className="card"><CommentForm action={addTicketCommentAction.bind(null, id)} /></div>

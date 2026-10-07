@@ -224,3 +224,37 @@ registerMockHandler(UNDERSTAND_FEEDBACK, (input) => {
     question: goal || workaround ? "" : "What are you trying to get done, and how do you handle it today?",
   };
 });
+
+// ---------- rework: a customer says a released ticket isn't right ----------
+export const UNDERSTAND_REWORK = "understand_rework";
+export const ReworkUnderstanding = z.object({
+  summary: z.string(),
+  expected: z.string(),
+  actual: z.string(),
+  impact: z.string(),
+});
+export type ReworkUnderstanding = z.infer<typeof ReworkUnderstanding>;
+export const UNDERSTAND_REWORK_INSTRUCTIONS = `A customer was told a delivered feature is released and says something isn't right.
+You get the feature title, the customer's description, optional attachments (with what each shows) and,
+if present, a correction the customer gave to your previous reading. Use ALL of it together.
+- summary: one sentence starting "It looks like ..." describing what's wrong, in plain words.
+- expected: what the customer expected the feature to do. actual: what happens instead.
+- impact: how it affects their work. Use "" when the material doesn't say.
+Never invent facts, never promise a fix, never mention AI.`;
+
+registerMockHandler(UNDERSTAND_REWORK, (input) => {
+  const { feature, description, correction, attachments } = input as {
+    feature: string; description: string; correction: string; attachments: { excerpt: string }[];
+  };
+  // A correction is the customer's own reading of the problem: it leads.
+  const all = sentences([correction, description, ...attachments.map((a) => a.excerpt)].join("\n"));
+  const expected = pick(all, /\b(expected|should|supposed to|needs? to|want(ed)? to)\b/i);
+  const actual = pick(all.filter((s) => s !== expected), /\b(but|instead|only|doesn't|does not|fails?|error|missing|wrong|can't|cannot)\b/i);
+  const impact = pick(all.filter((s) => s !== expected && s !== actual), /\b(hours?|minutes|errors?|mistakes?|delays?|risk|blocks?|by hand|manually)\b/i);
+  const core = (correction.trim() || actual || all[0] || `${feature} doesn't work as expected`)
+    .replace(/^(instead|but|however|so|and)\b,?\s*/i, "").replace(/[.!?]$/, "");
+  return {
+    summary: `It looks like ${core.charAt(0).toLowerCase() + core.slice(1)}.`,
+    expected, actual, impact,
+  };
+});

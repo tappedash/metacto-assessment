@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
-import { attachments, requests } from "@/db/schema";
+import { attachments, projects, requests, tickets, ticketValidations } from "@/db/schema";
 import { detectType, extractTextFrom, MAX_UPLOAD_BYTES, typeLabel } from "@/lib/extract";
 import { AttachmentSummary, SUMMARIZE_ATTACHMENT, SUMMARIZE_ATTACHMENT_INSTRUCTIONS } from "./ai-tasks";
 import { canViewAccountEvidence, type Actor } from "./permissions";
@@ -74,7 +74,7 @@ export async function saveUpload(actor: Actor, file: { name: string; type: strin
 export async function ownedAttachments(actor: Actor, ids: string[], opts: { unlinkedOnly?: boolean } = {}) {
   if (!ids.length) return [];
   const conditions = [eq(attachments.ownerId, actor.id), inArray(attachments.id, ids)];
-  if (opts.unlinkedOnly) conditions.push(isNull(attachments.requestId));
+  if (opts.unlinkedOnly) conditions.push(isNull(attachments.requestId), isNull(attachments.validationId));
   return getDb().select().from(attachments).where(and(...conditions));
 }
 
@@ -93,7 +93,7 @@ export async function linkAttachments(actor: Actor, ids: string[], requestId: st
 export async function removeAttachment(actor: Actor, id: string) {
   const [row] = await getDb().select().from(attachments).where(and(eq(attachments.id, id), eq(attachments.ownerId, actor.id)));
   if (!row) throw new Error("Attachment not found");
-  if (row.requestId) throw new Error("This file is already part of a submitted request");
+  if (row.requestId || row.validationId) throw new Error("This file is already part of a submitted request");
   await getDb().delete(attachments).where(eq(attachments.id, id));
   await rm(row.storagePath, { force: true });
 }
@@ -107,8 +107,29 @@ export async function readAttachment(actor: Actor, id: string) {
     const [req] = await getDb().select({ accountId: requests.accountId }).from(requests).where(eq(requests.id, row.requestId));
     allowed = Boolean(req && canViewAccountEvidence(actor, req.accountId));
   }
+  if (!allowed && actor.role === "engineer" && row.validationId) {
+    const [v] = await getDb().select({ accountId: projects.accountId }).from(ticketValidations)
+      .innerJoin(tickets, eq(tickets.id, ticketValidations.ticketId)).innerJoin(projects, eq(projects.id, tickets.projectId))
+      .where(eq(ticketValidations.id, row.validationId));
+    allowed = Boolean(v && canViewAccountEvidence(actor, v.accountId));
+  }
   if (!allowed) return null;
   return { row, bytes: await readFile(row.storagePath) };
+}
+
+/** Link uploaded files to the rework request they were submitted with. */
+export async function linkValidationAttachments(actor: Actor, ids: string[], validationId: string) {
+  if (!ids.length) return;
+  await getDb().update(attachments).set({ validationId })
+    .where(and(eq(attachments.ownerId, actor.id), inArray(attachments.id, ids), isNull(attachments.requestId), isNull(attachments.validationId)));
+}
+
+export async function attachmentsForValidations(validationIds: string[]) {
+  if (!validationIds.length) return new Map<string, AttachmentView[]>();
+  const rows = await getDb().select().from(attachments).where(inArray(attachments.validationId, validationIds));
+  const map = new Map<string, AttachmentView[]>();
+  for (const r of rows) map.set(r.validationId!, [...(map.get(r.validationId!) ?? []), toView(r)]);
+  return map;
 }
 
 export async function attachmentsForRequests(requestIds: string[]) {

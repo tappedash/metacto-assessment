@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Notice, PageHead, TicketStatus, param, type SearchParams } from "@/components/ui";
 import { TicketMove } from "@/components/ticket-move";
+import { ReworkCallout } from "@/components/rework-callout";
 import { engineers, feedbackTargets, listProjects, listTickets } from "@/domain/delivery";
 import { requireActor } from "@/domain/session";
+import { reworkRequests } from "@/domain/validation";
 import { statusesFor } from "@/domain/workflow";
 import { boardColumns } from "@/components/board-columns";
 import { moveMyTicketAction } from "../actions";
@@ -16,7 +18,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Searc
   const view = param(sp.view) === "backlog" ? "backlog" : "board";
   const assignee = sp.assignee === undefined ? actor.id : param(sp.assignee); // default: me; "" = everyone
   const filters = { q: param(sp.q), projectId: param(sp.project), accountId: param(sp.client), priority: param(sp.priority), assigneeId: assignee };
-  const [tickets, projects, clients, people] = await Promise.all([listTickets(actor, filters), listProjects(actor), feedbackTargets(actor), engineers()]);
+  const [tickets, projects, clients, people, reworks] = await Promise.all([listTickets(actor, filters), listProjects(actor), feedbackTargets(actor), engineers(), reworkRequests(actor, { openOnly: true })]);
   const workflows = await statusesFor(projects.map((p) => p.id));
   // One project selected: its own status columns. Otherwise: the four stages.
   const columns = boardColumns(tickets, filters.projectId ? workflows.get(filters.projectId) ?? null : null);
@@ -38,6 +40,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Searc
         </div>
       </PageHead>
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
+      <ReworkCallout reworks={reworks} hrefFor={(id) => `/engineer/tickets/${id}`} />
 
       <form className="toolbar" role="search" aria-label="Filter tickets">
         <input type="hidden" name="view" value={view} />

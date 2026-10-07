@@ -6,9 +6,11 @@ import { getTicket } from "@/domain/delivery";
 import { getNeed, needSignals } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
 import { projectWorkflow } from "@/domain/workflow";
+import { ReworkReview } from "@/components/rework-review";
 import { CommentForm, TeamTimeline } from "@/components/ticket-timeline";
 import { teamTimeline } from "@/domain/tracking";
-import { addCommentAction, moveMyTicketAction, saveNotesAction } from "../../actions";
+import { reworkRequests } from "@/domain/validation";
+import { addCommentAction, moveMyTicketAction, reviewReworkAction, saveNotesAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [need, signals, workflow, events] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId), teamTimeline(id)]);
+  const [need, signals, workflow, events, reworks] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id })]);
   const s = signals.get(ticket.needId)!;
   const mine = ticket.assigneeId === actor.id;
 
@@ -47,6 +49,8 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         <div><dt>Assignee</dt><dd>{ticket.assignee ?? "Unassigned"}{mine ? " (you)" : ""}</dd></div>
         <div><dt>Effort</dt><dd>{ticket.effort ?? "Not estimated"}</dd></div>
       </dl>
+
+      <ReworkReview reworks={reworks} action={reviewReworkAction.bind(null, id)} />
 
       <div className="section grid split">
         <div className="card">

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { boardColumns } from "@/components/board-columns";
+import { ReworkCallout } from "@/components/rework-callout";
 import { TicketMove } from "@/components/ticket-move";
 import { Notice, PageHead, TicketStatus, param, type SearchParams } from "@/components/ui";
 import { listProjects, listTickets } from "@/domain/delivery";
 import { requireActor } from "@/domain/session";
+import { reworkRequests } from "@/domain/validation";
 import { statusesFor } from "@/domain/workflow";
 import { moveTicketAction } from "../actions";
 
@@ -15,7 +17,7 @@ export default async function PmTicketsPage({ searchParams }: { searchParams: Se
   const actor = await requireActor(["pm"]);
   const sp = await searchParams;
   const projectId = param(sp.project);
-  const [tickets, projects] = await Promise.all([listTickets(actor, { projectId }), listProjects(actor)]);
+  const [tickets, projects, reworks] = await Promise.all([listTickets(actor, { projectId }), listProjects(actor), reworkRequests(actor, { openOnly: true })]);
   const workflows = await statusesFor(projects.map((p) => p.id));
   const columns = boardColumns(tickets, projectId ? workflows.get(projectId) ?? null : null);
   const back = projectId ? `/pm/tickets?project=${projectId}` : "/pm/tickets";
@@ -25,6 +27,7 @@ export default async function PmTicketsPage({ searchParams }: { searchParams: Se
       <PageHead eyebrow="Tickets" title="Delivery across projects"
         lede="Tickets are what Engineering is building; each links to the Customer Need that explains why. You move tickets out of Backlog; engineers move them through delivery." />
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
+      <ReworkCallout reworks={reworks} hrefFor={(id) => `/pm/tickets/${id}`} />
       <form className="toolbar" aria-label="Choose project">
         <label className="field">Project
           <select name="project" defaultValue={projectId}>

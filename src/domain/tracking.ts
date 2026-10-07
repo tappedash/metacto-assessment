@@ -168,6 +168,7 @@ export async function customerActivity(actor: Actor, limit = 12): Promise<Activi
       const t = mine.find((x) => x.id === e.ticketId)!;
       if (e.kind === "status" && e.publicStatus) items.push({ at: e.createdAt, kind: "status", href: `/client/tickets/${t.id}`, text: `${t.title} moved to ${PUBLIC_STATUS[e.publicStatus].label}.` });
       else if (e.kind === "comment") items.push({ at: e.createdAt, kind: "comment", href: `/client/tickets/${t.id}`, text: `Update on ${t.title}: ${e.body}` });
+      else if (e.kind === "validation") items.push({ at: e.createdAt, kind: "comment", href: `/client/tickets/${t.id}`, text: `${t.title}: ${e.body}` });
     }
   }
   const followed = await followedNeedIds(actor);
