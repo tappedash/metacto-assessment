@@ -4,6 +4,7 @@ import { accounts, invitations, users } from "@/db/schema";
 import { getEnv } from "@/lib/env";
 import { sendEmail } from "@/lib/mailer";
 import { ROLE_LABEL } from "./labels";
+import { getSettings } from "./settings";
 import type { Actor, Role } from "./permissions";
 
 // Invitation-based onboarding. Only the Workspace Admin invites; the first sign-in with an
@@ -20,8 +21,9 @@ export async function pendingInvitation(email: string) {
 
 /** Whether this email may sign in at all: an existing user or a pending invitation. */
 export async function canSignIn(email: string): Promise<boolean> {
-  const [user] = await getDb().select({ id: users.id }).from(users).where(eq(users.email, normalizeEmail(email)));
-  return Boolean(user) || Boolean(await pendingInvitation(email));
+  const [user] = await getDb().select({ id: users.id, active: users.active }).from(users).where(eq(users.email, normalizeEmail(email)));
+  if (user) return user.active; // deactivated users can't sign in
+  return Boolean(await pendingInvitation(email));
 }
 
 export class NotInvitedError extends Error {
@@ -46,9 +48,13 @@ export async function applyInvitation<T extends { email: string; name?: string |
   };
 }
 
+/** After the first sign-in: close the invitation and apply the Admin's default notification preferences. */
 export async function markInvitationAccepted(email: string) {
-  await getDb().update(invitations).set({ acceptedAt: new Date() })
+  const db = getDb();
+  await db.update(invitations).set({ acceptedAt: new Date() })
     .where(and(eq(invitations.email, normalizeEmail(email)), isNull(invitations.acceptedAt)));
+  const settings = await getSettings();
+  await db.update(users).set({ notifyEmail: settings.defaultNotifyEmail, notifyInApp: settings.defaultNotifyInApp }).where(eq(users.email, normalizeEmail(email)));
 }
 
 // ---------- Admin ----------
@@ -75,12 +81,27 @@ export async function inviteUser(actor: Actor, input: { name: string; email: str
   // Re-inviting a pending email updates the invitation.
   await db.insert(invitations).values(values).onConflictDoUpdate({ target: invitations.email, set: values });
 
+  await sendInvitationEmail({ email, name: input.name.trim(), role: input.role, accountName });
+}
+
+async function sendInvitationEmail({ email, name, role, accountName }: { email: string; name: string; role: Role; accountName: string | null }) {
   const url = `${getEnv().BETTER_AUTH_URL}/login?email=${encodeURIComponent(email)}`;
   await sendEmail({
     to: email,
     subject: "You're invited to Needs Hub",
-    text: `${input.name.trim() ? `Hi ${input.name.trim()},\n\n` : ""}You've been invited to Needs Hub as ${ROLE_LABEL[input.role]}${accountName ? ` for ${accountName}` : ""}.\n\nSign in with this email address (Google or a magic link): ${url}\n`,
+    text: `${name ? `Hi ${name},\n\n` : ""}You've been invited to Needs Hub as ${ROLE_LABEL[role]}${accountName ? ` for ${accountName}` : ""}.\n\nSign in with this email address (Google or a magic link): ${url}\n`,
   });
+}
+
+/** Sends the invitation email again (e.g. it was missed); the invitation itself is unchanged. */
+export async function resendInvitation(actor: Actor, id: string) {
+  assertAdmin(actor);
+  const [row] = await getDb().select({ email: invitations.email, name: invitations.name, role: invitations.role, accountName: accounts.name })
+    .from(invitations).leftJoin(accounts, eq(accounts.id, invitations.accountId))
+    .where(and(eq(invitations.id, id), isNull(invitations.acceptedAt)));
+  if (!row) throw new Error("Invitation not found or already accepted");
+  await sendInvitationEmail({ email: row.email, name: row.name ?? "", role: row.role, accountName: row.accountName });
+  return row.email;
 }
 
 export async function listPendingInvitations() {

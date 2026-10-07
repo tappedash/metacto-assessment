@@ -6,7 +6,7 @@ import { approveAndSend, ensureNeedInsights, saveDecision, type DecisionInput } 
 import { createTicket, moveTicket, updateTicket } from "@/domain/delivery";
 import { RUBRIC_KEYS } from "@/domain/ai-tasks";
 import { requireActor } from "@/domain/session";
-import { acceptSuggestion, createNeed, mergeNeeds, moveToNeed } from "@/domain/triage";
+import { acceptSuggestion, assignNeedOwner, createNeed, mergeNeeds, moveToNeed, splitNeed } from "@/domain/triage";
 import { addComment, publishUpdate } from "@/domain/tracking";
 import { reviewRework } from "@/domain/validation";
 import { addStatus, moveStatus, removeStatus, updateStatus, type Stage } from "@/domain/workflow";
@@ -67,6 +67,20 @@ export async function mergeNeedAction(needId: string, form: FormData) {
   const actor = await requireActor(["pm"]);
   const targetId = str(form, "targetId");
   await withFlash(`/pm/needs/${targetId || needId}`, async () => { await mergeNeeds(actor, needId, targetId); refresh(); return "Customer Needs merged; evidence, supporters and tickets combined."; });
+}
+
+export async function assignNeedOwnerAction(needId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/needs/${needId}`, async () => { await assignNeedOwner(actor, needId, str(form, "ownerId") || null); refresh(); return "Owner saved."; });
+}
+
+export async function splitNeedAction(needId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/needs/${needId}`, async () => {
+    await splitNeed(actor, needId, form.getAll("requestIds").map(String), str(form, "title"));
+    refresh();
+    return "Requests split into a new Customer Need. Open it from Customer Needs.";
+  });
 }
 
 export async function createTicketAction(needId: string, form: FormData) {

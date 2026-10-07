@@ -10,6 +10,7 @@ import {
 } from "./ai-tasks";
 import { matchRequest } from "./matching";
 import { accountPms, notify } from "./notifications";
+import { getSettings } from "./settings";
 import type { Actor } from "./permissions";
 
 // Feature Request intake: follow-up question -> synchronous match -> support or triage.
@@ -42,7 +43,9 @@ export async function checkFeedback(input: FeedbackInput, opts: { skipFollowUp?:
   }
   const result = await matchRequest(input, { db: getDb(), ai: getAi(), timeoutMs: getEnv().MATCH_TIMEOUT_MS });
   let need: MatchView["need"] = null;
-  if (result.needId && (result.relation === "same" || result.relation === "related")) {
+  // Below the Admin's confidence threshold the match isn't suggested; the request goes to PM Triage.
+  const { matchThreshold } = await getSettings();
+  if (result.needId && (result.relation === "same" || result.relation === "related") && result.confidence >= matchThreshold) {
     const [row] = await getDb()
       .select({
         id: needs.id, title: needs.title, problemStatement: needs.problemStatement, status: needs.status,

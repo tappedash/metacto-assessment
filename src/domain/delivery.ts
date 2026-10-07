@@ -214,5 +214,5 @@ export async function feedbackTargets(actor: Actor) {
 }
 
 export async function engineers() {
-  return getDb().select({ id: users.id, name: users.name }).from(users).where(eq(users.role, "engineer")).orderBy(asc(users.name));
+  return getDb().select({ id: users.id, name: users.name }).from(users).where(and(eq(users.role, "engineer"), eq(users.active, true))).orderBy(asc(users.name));
 }

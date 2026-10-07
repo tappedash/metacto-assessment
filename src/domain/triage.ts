@@ -1,7 +1,10 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
 import { accounts, decisions, needs, projects, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
+import { DRAFT_NEED, DRAFT_NEED_INSTRUCTIONS, DraftNeed } from "./ai-tasks";
 import { attachRequest, createNeedFromRequest } from "./feedback";
+import { hrefs, notify } from "./notifications";
 import { canDecideOnNeed, type Actor } from "./permissions";
 
 // PM Triage: only the cases AI could not settle (low confidence, proposed new Needs,
@@ -83,4 +86,56 @@ export async function mergeNeeds(actor: Actor, sourceId: string, targetId: strin
     // Evidence changed: force the AI Brief and rubric to regenerate.
     await tx.update(needs).set({ aiEvidenceCount: null }).where(eq(needs.id, targetId));
   });
+}
+
+/** The PM who owns a Need hears about its new requests, tickets and rework. */
+export async function assignNeedOwner(actor: Actor, needId: string, ownerId: string | null) {
+  assertPm(actor);
+  const db = getDb();
+  if (ownerId) {
+    const [pm] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, ownerId), eq(users.role, "pm"), eq(users.active, true)));
+    if (!pm) throw new Error("The owner must be an active Product Manager");
+  }
+  const [need] = await db.update(needs).set({ ownerId }).where(eq(needs.id, needId)).returning({ title: needs.title });
+  if (!need) throw new Error("Customer Need not found");
+  if (ownerId) {
+    await notify({ event: "need.assigned", entity: { type: "need", id: needId }, actorId: actor.id, recipients: [ownerId],
+      title: `You own "${need.title}"`, body: `You're now the owner of the Customer Need "${need.title}".`, href: hrefs.need(needId) });
+  }
+}
+
+/**
+ * Split: some requests on a Need describe a different problem. They move to a new Need (AI
+ * drafts its statement from them); their client submitters support the new Need instead.
+ */
+export async function splitNeed(actor: Actor, needId: string, requestIds: string[], title: string) {
+  assertPm(actor);
+  if (!requestIds.length) throw new Error("Choose the requests that describe a different problem");
+  const db = getDb();
+  const moving = await db.select().from(requests).where(and(eq(requests.needId, needId), eq(requests.linkState, "confirmed"), inArray(requests.id, requestIds)));
+  if (moving.length !== requestIds.length) throw new Error("Some of those requests aren't evidence for this Need");
+  const [{ remaining }] = await db.select({ remaining: sql<number>`count(*)::int` }).from(requests).where(and(eq(requests.needId, needId), eq(requests.linkState, "confirmed")));
+  if (remaining === moving.length) throw new Error("Keep at least one request on this Need; to rename it, edit the Need instead");
+
+  const { llm, embeddings } = getAi();
+  const draft = await llm.generateStructured({
+    name: DRAFT_NEED, instructions: DRAFT_NEED_INSTRUCTIONS, schema: DraftNeed,
+    input: { title: moving.map((r) => r.title).join("; "), why: moving.map((r) => r.why).join(" ") },
+  });
+  const newTitle = title.trim() || draft.title;
+  const [embedding] = await embeddings.embed([`${newTitle}\n${draft.problemStatement}`]);
+  const [created] = await db.insert(needs).values({ title: newTitle, problemStatement: draft.problemStatement, embedding, ownerId: actor.id }).returning({ id: needs.id });
+  await db.update(requests).set({ needId: created.id }).where(inArray(requests.id, requestIds));
+
+  // Client submitters follow the new Need; they keep supporting the old one only if they still have a request there.
+  const submitters = [...new Set(moving.map((r) => r.submittedBy))];
+  const clients = (await db.select({ id: users.id }).from(users).where(and(inArray(users.id, submitters), eq(users.role, "client")))).map((u) => u.id);
+  for (const userId of clients) {
+    await db.insert(supports).values({ userId, needId: created.id }).onConflictDoNothing();
+    const [{ left }] = await db.select({ left: sql<number>`count(*)::int` }).from(requests).where(and(eq(requests.needId, needId), eq(requests.submittedBy, userId)));
+    if (!left) await db.delete(supports).where(and(eq(supports.needId, needId), eq(supports.userId, userId)));
+  }
+  // Evidence changed on both: force the AI Brief and rubric to regenerate.
+  await db.update(needs).set({ aiEvidenceCount: null }).where(inArray(needs.id, [needId, created.id]));
+  return created.id;
 }

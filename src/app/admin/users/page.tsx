@@ -3,7 +3,7 @@ import { listAccounts, listUsers } from "@/domain/admin";
 import { listPendingInvitations } from "@/domain/invitations";
 import { ROLE_LABEL } from "@/domain/labels";
 import { requireActor } from "@/domain/session";
-import { inviteUserAction, revokeInvitationAction, setUserRoleAction } from "../actions";
+import { inviteUserAction, resendInvitationAction, revokeInvitationAction, setUserActiveAction, setUserRoleAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,24 +13,37 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
   const [rows, accounts, pending] = await Promise.all([listUsers(), listAccounts(), listPendingInvitations()]);
   return (
     <>
-      <PageHead eyebrow="Users" title="People and roles" lede="Admin · Product Manager · Engineer · Client user. Roles decide what each person can see and do." />
+      <PageHead eyebrow="Users" title="People and roles" lede="Four fixed roles: Admin · Product Manager · Engineer · Client user. Roles decide what each person can see and do; deactivated people can't sign in." />
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
       <div className="card flush">
         <table className="stack-sm">
-          <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th></tr></thead>
+          <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Access</th></tr></thead>
           <tbody>
             {rows.map((u) => (
-              <tr key={u.id}>
+              <tr key={u.id} className={u.active ? undefined : "muted"}>
                 <td className="primary"><b>{u.name}</b>{u.accountName ? <span className="muted"> · {u.accountName}</span> : null}</td>
                 <td data-label="Email">{u.email}</td>
                 <td data-label="Role">
-                  {u.role === "client" || u.id === actor.id ? ROLE_LABEL[u.role] : (
+                  {u.id === actor.id ? ROLE_LABEL[u.role] : (
                     <form action={setUserRoleAction.bind(null, u.id)} className="btn-row">
                       <label className="sr-only" htmlFor={`role-${u.id}`}>Role for {u.name}</label>
                       <select id={`role-${u.id}`} name="role" defaultValue={u.role} style={{ margin: 0, width: "auto" }}>
-                        <option value="engineer">Engineer</option><option value="pm">Product Manager</option><option value="admin">Workspace Admin</option>
+                        <option value="engineer">Engineer</option><option value="pm">Product Manager</option><option value="client">Client user</option><option value="admin">Workspace Admin</option>
+                      </select>
+                      <label className="sr-only" htmlFor={`acct-${u.id}`}>Client account for {u.name}</label>
+                      <select id={`acct-${u.id}`} name="accountId" defaultValue={u.accountId ?? ""} style={{ margin: 0, width: "auto" }} title="Client account (client users only)">
+                        <option value="">No client account</option>
+                        {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                       </select>
                       <button className="btn btn-ghost btn-sm" type="submit">Save</button>
+                    </form>
+                  )}
+                </td>
+                <td data-label="Access">
+                  {u.id === actor.id ? "Active" : (
+                    <form action={setUserActiveAction.bind(null, u.id, !u.active)} className="btn-row">
+                      <span>{u.active ? "Active" : "Deactivated"}</span>
+                      <button className="btn-link" type="submit">{u.active ? "Deactivate" : "Reactivate"}</button>
                     </form>
                   )}
                 </td>
@@ -50,7 +63,12 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
                   <td className="primary"><b>{p.email}</b>{p.name ? <span className="muted"> · {p.name}</span> : null}</td>
                   <td data-label="Role">{ROLE_LABEL[p.role]}</td>
                   <td data-label="Client account">{p.accountName ?? "—"}</td>
-                  <td data-label=""><form action={revokeInvitationAction.bind(null, p.id)}><button className="btn-link" type="submit">Revoke</button></form></td>
+                  <td data-label="">
+                    <div className="btn-row">
+                      <form action={resendInvitationAction.bind(null, p.id)}><button className="btn-link" type="submit">Resend</button></form>
+                      <form action={revokeInvitationAction.bind(null, p.id)}><button className="btn-link" type="submit">Revoke</button></form>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {!pending.length && <tr><td colSpan={4} className="muted">No pending invitations.</td></tr>}

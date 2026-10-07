@@ -1,4 +1,4 @@
-import { asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, NeedStatus, Notice, TicketStatus, param, type SearchParams } from "@/components/ui";
@@ -11,7 +11,7 @@ import { ensureNeedInsights, type NeedInsights } from "@/domain/decisions";
 import { engineers } from "@/domain/delivery";
 import { getNeed, needEvidence, needSignals, needTickets, sentUpdates } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
-import { createTicketAction, mergeNeedAction, regenerateInsightsAction, saveDecisionAction } from "../../actions";
+import { assignNeedOwnerAction, createTicketAction, mergeNeedAction, regenerateInsightsAction, saveDecisionAction, splitNeedAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
   if (!need) notFound();
 
   const db = getDb();
-  const [signalMap, evidence, ticketRows, decisionRows, updates, otherNeeds, projectRows, engineerRows] = await Promise.all([
+  const [signalMap, evidence, ticketRows, decisionRows, updates, otherNeeds, projectRows, engineerRows, pmRows] = await Promise.all([
     needSignals([id]),
     needEvidence(id, actor),
     needTickets(id),
@@ -47,6 +47,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
     db.select({ id: needs.id, title: needs.title }).from(needs).where(ne(needs.id, id)).orderBy(asc(needs.title)),
     db.select({ id: projects.id, name: projects.name, account: accounts.name }).from(projects).innerJoin(accounts, eq(accounts.id, projects.accountId)).orderBy(asc(accounts.name), asc(projects.name)),
     engineers(),
+    db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.role, "pm"), eq(users.active, true))).orderBy(asc(users.name)),
   ]);
   const signals = signalMap.get(id)!;
   const files = await attachmentsForRequests(evidence.all.map((e) => e.id));
@@ -79,7 +80,17 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
           <h1>{need.title}</h1>
           <p className="lede">{need.problemStatement}</p>
         </div>
-        <NeedStatus status={need.status} />
+        <div className="stack" style={{ alignItems: "flex-end" }}>
+          <NeedStatus status={need.status} />
+          <form action={assignNeedOwnerAction.bind(null, id)} className="btn-row" aria-label="Owner">
+            <label className="sr-only" htmlFor="need-owner">Owner</label>
+            <select id="need-owner" name="ownerId" defaultValue={need.ownerId ?? ""} style={{ margin: 0, width: "auto" }}>
+              <option value="">No owner</option>
+              {pmRows.map((p) => <option key={p.id} value={p.id}>Owner: {p.name}</option>)}
+            </select>
+            <button className="btn btn-ghost btn-sm" type="submit">Save</button>
+          </form>
+        </div>
       </div>
 
       {/* 2. AI Brief */}
@@ -260,6 +271,22 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
           </ol>
         </div>
       </div>
+
+      {evidence.all.length > 1 && (
+        <details className="card section">
+          <summary className="strong">Split requests into a new Need (different problem)</summary>
+          <form action={splitNeedAction.bind(null, id)} style={{ marginTop: ".8rem" }}>
+            <fieldset style={{ border: 0, padding: 0 }}>
+              <legend className="muted" style={{ marginBottom: ".4rem" }}>Requests that describe a different problem:</legend>
+              {evidence.all.map((e) => (
+                <label className="check" key={e.id}><input type="checkbox" name="requestIds" value={e.id} /> {e.label} · {e.accountName}: &quot;{e.title}&quot;</label>
+              ))}
+            </fieldset>
+            <label className="field">Title for the new Need <span className="hint">(optional: AI drafts one)</span><input type="text" name="title" maxLength={200} /></label>
+            <button className="btn btn-ghost btn-sm" type="submit">Split into a new Need</button>
+          </form>
+        </details>
+      )}
 
       {otherNeeds.length > 0 && (
         <details className="card section">

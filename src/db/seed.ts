@@ -102,7 +102,7 @@ export async function seed({ quiet = false } = {}) {
   // Customer Needs, embedded from title + problem statement.
   const keys = Object.keys(NEEDS) as NeedKey[];
   const needVectors = await embeddings.embed(keys.map((k) => `${NEEDS[k].title}\n${NEEDS[k].problemStatement}`));
-  const needRows = await db.insert(s.needs).values(keys.map((k, i) => ({ ...NEEDS[k], embedding: needVectors[i] }))).returning();
+  const needRows = await db.insert(s.needs).values(keys.map((k, i) => ({ ...NEEDS[k], embedding: needVectors[i], ownerId: sam.id }))).returning();
   const need = Object.fromEntries(keys.map((k, i) => [k, needRows[i]])) as Record<NeedKey, (typeof needRows)[number]>;
 
   // Verbatim Feature Requests (evidence), linked and confirmed.

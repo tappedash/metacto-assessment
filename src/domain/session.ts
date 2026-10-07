@@ -21,15 +21,16 @@ export interface SessionActor extends Actor {
 export async function loadActor(userId: string): Promise<SessionActor | null> {
   const db = getDb();
   const [user] = await db
-    .select({ id: users.id, name: users.name, email: users.email, role: users.role, accountId: users.accountId, accountName: accounts.name })
+    .select({ id: users.id, name: users.name, email: users.email, role: users.role, accountId: users.accountId, accountName: accounts.name, active: users.active })
     .from(users)
     .leftJoin(accounts, eq(accounts.id, users.accountId))
     .where(eq(users.id, userId));
-  if (!user) return null;
+  if (!user || !user.active) return null; // deactivated: treated as signed out everywhere
   const staffed = user.role === "engineer"
     ? (await db.select({ accountId: staffing.accountId }).from(staffing).where(eq(staffing.engineerId, user.id))).map((s) => s.accountId)
     : [];
-  return { ...user, role: user.role as Role, staffedAccountIds: staffed };
+  const { active: _active, ...rest } = user;
+  return { ...rest, role: user.role as Role, staffedAccountIds: staffed };
 }
 
 export async function getActor(): Promise<SessionActor | null> {
