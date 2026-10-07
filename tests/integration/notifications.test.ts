@@ -116,7 +116,7 @@ describe("event notifications", () => {
 
   it("follows each user's preferences, but assignments always reach the inbox", async () => {
     await db().update(users).set({ notifyEmail: false, notifyInApp: false }).where(eq(users.id, mia.id));
-    const t = await ticket("T-103");
+    const t = await ticket("T-101"); // Northwind: Mia is staffed there
     await updateTicket(sam, t.id, { assigneeId: mia.id, priority: t.priority });
     expect(await events(mia.id)).toEqual(["ticket.assigned:sent"]);
     expect(await events(mia.id, "email")).toEqual(["ticket.assigned:skipped"]);

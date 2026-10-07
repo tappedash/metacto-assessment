@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { accounts, needs, projectMembers, projects, projectStatuses, statusUpdates, tickets, users } from "@/db/schema";
+import { accounts, needs, projectMembers, projects, projectStatuses, staffing, statusUpdates, tickets, users } from "@/db/schema";
 import { draftStatusUpdate } from "./decisions";
 import { allowedTicketMoves, canViewAccountEvidence, type Actor } from "./permissions";
 import { hrefs, notify, ticketPeople } from "./notifications";
@@ -117,6 +117,16 @@ async function notifyStatusChange(actor: Actor, ticketId: string, from: StatusDe
   }
 }
 
+/** Assignees must be active engineers staffed on the project's client (or they couldn't open the ticket). */
+async function assertAssignable(projectId: string, assigneeId: string) {
+  const db = getDb();
+  const [project] = await db.select({ accountId: projects.accountId }).from(projects).where(eq(projects.id, projectId));
+  const [engineer] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, assigneeId), eq(users.role, "engineer"), eq(users.active, true)));
+  if (!project || !engineer) throw new Error("Assign an active engineer");
+  const staffed = await loadStaffing(assigneeId);
+  if (!staffed.includes(project.accountId)) throw new Error("That engineer isn't staffed on this client. Staff them first (Admin → Projects).");
+}
+
 /** PM changes who works on a ticket or how urgent it is; the people involved are told. */
 export async function updateTicket(actor: Actor, ticketId: string, input: { assigneeId: string | null; priority: string | null }) {
   if (actor.role !== "pm") throw new Error("Only the Product Manager assigns and prioritises tickets");
@@ -124,10 +134,7 @@ export async function updateTicket(actor: Actor, ticketId: string, input: { assi
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, ticketId));
   if (!ticket) throw new Error("Ticket not found");
   const priority = (["P0", "P1", "P2", "P3"].includes(input.priority ?? "") ? input.priority : null) as "P1" | null;
-  if (input.assigneeId) {
-    const [engineer] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, input.assigneeId), eq(users.role, "engineer"), eq(users.active, true)));
-    if (!engineer) throw new Error("Assign an active engineer");
-  }
+  if (input.assigneeId && input.assigneeId !== ticket.assigneeId) await assertAssignable(ticket.projectId, input.assigneeId);
   await db.update(tickets).set({ assigneeId: input.assigneeId, priority }).where(eq(tickets.id, ticketId));
   const people = await ticketPeople(ticketId);
   if (input.assigneeId && input.assigneeId !== ticket.assigneeId) {
@@ -152,6 +159,7 @@ export async function createTicket(actor: Actor, input: { needId: string; projec
   // New tickets start in the project's first Backlog status.
   const start = (await projectWorkflow(input.projectId)).find((s) => s.stage === "backlog");
   if (!start) throw new Error("This project has no Backlog status");
+  if (input.assigneeId) await assertAssignable(input.projectId, input.assigneeId);
   const [row] = await getDb().insert(tickets).values({
     key, title: input.title.trim(), needId: input.needId, projectId: input.projectId, statusId: start.id,
     priority: (input.priority || null) as "P1" | null, effort: (input.effort || null) as "M" | null, assigneeId: input.assigneeId || null,
@@ -167,7 +175,8 @@ export async function createTicket(actor: Actor, input: { needId: string; projec
 export async function saveTicketNotes(actor: Actor, ticketId: string, input: { effort: string; feasibility: string; dependencies: string; notes: string }) {
   const [ticket] = await getDb().select().from(tickets).where(eq(tickets.id, ticketId));
   if (!ticket) throw new Error("Ticket not found");
-  const allowed = actor.role === "pm" || (actor.role === "engineer" && ticket.assigneeId === actor.id);
+  const [project] = await getDb().select({ accountId: projects.accountId }).from(projects).where(eq(projects.id, ticket.projectId));
+  const allowed = actor.role === "pm" || (actor.role === "engineer" && ticket.assigneeId === actor.id && canViewAccountEvidence(actor, project.accountId));
   if (!allowed) throw new Error("Only the assignee or the PM can edit technical notes");
   await getDb().update(tickets).set({
     effort: (["S", "M", "L", "XL"].includes(input.effort) ? input.effort : ticket.effort) as "M",
@@ -217,4 +226,8 @@ export async function feedbackTargets(actor: Actor) {
 
 export async function engineers() {
   return getDb().select({ id: users.id, name: users.name }).from(users).where(and(eq(users.role, "engineer"), eq(users.active, true))).orderBy(asc(users.name));
+}
+
+async function loadStaffing(engineerId: string): Promise<string[]> {
+  return (await getDb().select({ accountId: staffing.accountId }).from(staffing).where(eq(staffing.engineerId, engineerId))).map((r) => r.accountId);
 }

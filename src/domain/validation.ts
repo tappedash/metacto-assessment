@@ -163,11 +163,11 @@ export async function reviewRework(actor: Actor, validationId: string, decision:
 
   // The customer hears the decision (if the Admin enabled it); the assignee always does.
   const settings = await getSettings();
-  const outcome = { reopen: "reopened for rework", follow_up: "accepted as follow-up work", decline: "reviewed; it won't be reopened" }[decision];
+  const outcome = { reopen: "reopened for rework", follow_up: "accepted as follow-up work", decline: "reviewed; the ticket won't be reopened" }[decision];
   await notify({
     event: "rework.resolved", entity: { type: "rework", id: validationId }, actorId: actor.id,
     recipients: [settings.customerNotify.rework_decision ? v.userId : null, ticket.assigneeId],
-    title: `${ticket.title}: your report was ${outcome}`, body: text || `The team ${outcome.replace("reviewed; ", "")}.`, href: hrefs.ticket(followUpTicketId ?? v.ticketId),
+    title: `${ticket.title}: rework request ${outcome}`, body: text || `The team ${outcome.replace("reviewed; ", "")}.`, href: hrefs.ticket(followUpTicketId ?? v.ticketId),
   });
   if (followUpTicketId && ticket.assigneeId) {
     await notify({ event: "ticket.created", entity: { type: "ticket", id: followUpTicketId }, actorId: actor.id, recipients: [ticket.assigneeId],
