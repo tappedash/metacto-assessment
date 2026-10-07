@@ -3,7 +3,7 @@ import { asc } from "drizzle-orm";
 import { Notice, PageHead, param, type SearchParams } from "@/components/ui";
 import { getDb } from "@/db/client";
 import { needs } from "@/db/schema";
-import { listTriage } from "@/domain/triage";
+import { autoMatchedCount, listTriage } from "@/domain/triage";
 import { acceptTriageAction, createNeedAction, moveTriageAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,9 @@ const REL: Record<string, { label: string; cls: string }> = {
 // Exception inbox: only what AI could not settle. Confirmed matches never land here.
 export default async function TriagePage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
-  const [items, allNeeds] = await Promise.all([
+  const [items, autoMatched, allNeeds] = await Promise.all([
     listTriage(),
+    autoMatchedCount(),
     getDb().select({ id: needs.id, title: needs.title }).from(needs).orderBy(asc(needs.title)),
   ]);
   return (
@@ -26,6 +27,12 @@ export default async function TriagePage({ searchParams }: { searchParams: Searc
       <PageHead eyebrow="Triage" title={items.length ? `${items.length} item${items.length === 1 ? " needs" : "s need"} your judgment` : "All caught up"}
         lede="AI handled the obvious cases. These are matches it wasn't sure about, requests customers said are different, and proposed new Customer Needs." />
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
+      {autoMatched > 0 && (
+        <p className="ai-panel" style={{ marginBottom: "1rem" }}>
+          <span className="ai-tag">Handled by AI</span>{" "}
+          <b>{autoMatched} request{autoMatched === 1 ? "" : "s"}</b> in the last 30 days matched an existing Customer Need with high confidence and the customer confirmed it. They were added as evidence without you. <Link className="btn-link" href="/pm/needs">See Customer Needs</Link>
+        </p>
+      )}
       {items.length === 0 ? (
         <div className="card empty">
           <h2>All caught up</h2>

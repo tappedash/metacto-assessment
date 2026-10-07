@@ -1,10 +1,11 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
 import { accounts, decisions, needs, projects, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
 import { DRAFT_NEED, DRAFT_NEED_INSTRUCTIONS, DraftNeed } from "./ai-tasks";
 import { attachRequest, createNeedFromRequest } from "./feedback";
 import { hrefs, notify } from "./notifications";
+import { getSettings } from "./settings";
 import { canDecideOnNeed, type Actor } from "./permissions";
 
 // PM Triage: only the cases AI could not settle (low confidence, proposed new Needs,
@@ -30,6 +31,14 @@ export async function listTriage() {
 
 export async function triageCount(): Promise<number> {
   const [row] = await getDb().select({ n: sql<number>`count(*)::int` }).from(requests).where(eq(requests.linkState, "triage"));
+  return row.n;
+}
+
+/** Requests AI matched confidently and the customer confirmed: they never needed the PM. */
+export async function autoMatchedCount(days = 30): Promise<number> {
+  const { matchThreshold } = await getSettings();
+  const [row] = await getDb().select({ n: sql<number>`count(*)::int` }).from(requests)
+    .where(and(eq(requests.linkState, "confirmed"), gte(requests.linkConfidence, matchThreshold), gte(requests.createdAt, new Date(Date.now() - days * 86_400_000))));
   return row.n;
 }
 

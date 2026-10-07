@@ -27,6 +27,7 @@ export function ClientShareFlow({ initialAttachments = [] }: { initialAttachment
   const [outcome, setOutcome] = useState<SubmitOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reply, setReply] = useState("");
   const input = useRef<HTMLInputElement>(null);
 
   async function upload(list: FileList | File[]) {
@@ -50,16 +51,20 @@ export function ClientShareFlow({ initialAttachments = [] }: { initialAttachment
     else setError((await res.json()).error);
   }
 
-  async function understand(event: React.FormEvent) {
-    event.preventDefault();
+  async function understand(event: React.FormEvent | null, withReply = "") {
+    event?.preventDefault();
     setBusy(true); setError(null);
-    const result = await understandFeedbackAction({ title, details, attachmentIds: files.map((f) => f.id) });
+    // A reply to AI (answer or correction) becomes part of the customer's own description.
+    const text = withReply.trim() ? `${details.trim()}\n${withReply.trim()}`.trim() : details;
+    const result = await understandFeedbackAction({ title, details: text, attachmentIds: files.map((f) => f.id) });
     setBusy(false);
     if ("error" in result) return setError(result.error);
     setUnderstanding(result.understanding);
     setTitle(title.trim() || result.understanding.title);
     setCtx({ goal: result.understanding.goal, workaround: result.understanding.workaround, impact: result.understanding.impact });
     setFiles(result.attachments.map((a) => ({ ...a })));
+    setDetails(text);
+    setReply("");
     setStep("understand");
   }
 
@@ -135,11 +140,16 @@ export function ClientShareFlow({ initialAttachments = [] }: { initialAttachment
           <div className="ai-panel" aria-live="polite">
             <span className="ai-tag">AI understood</span>
             <p style={{ marginTop: ".35rem" }}>{understanding.summary}</p>
-            {understanding.question && <p className="strong" style={{ marginTop: ".5rem" }}>{understanding.question}</p>}
             {understanding.terms.length > 0 && <p className="muted" style={{ marginTop: ".5rem" }}>Terms: {understanding.terms.join(", ")}</p>}
           </div>
+          <form className="stack" style={{ marginTop: ".8rem" }} onSubmit={(e) => { e.preventDefault(); void understand(null, reply); }}>
+            <label className="field" style={{ margin: 0 }}>{understanding.question || "Not quite right? Tell AI what it missed"}
+              <textarea value={reply} onChange={(e) => setReply(e.target.value)} maxLength={1000} placeholder="e.g. The real problem is that month-end close takes two days." />
+            </label>
+            <div><button className="btn btn-ghost btn-sm" type="submit" disabled={busy || !reply.trim()}>{busy ? "Reading…" : "Refine with AI"}</button></div>
+          </form>
           <AttachmentList items={files} showSummary />
-          <p className="muted" style={{ margin: "1rem 0 .5rem" }}>Correct anything that's not quite right:</p>
+          <p className="muted" style={{ margin: "1rem 0 .5rem" }}>Or edit the details directly:</p>
           <label className="field">Short title<input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
           <label className="field">What you&apos;re trying to accomplish<textarea value={ctx.goal} onChange={(e) => setCtx({ ...ctx, goal: e.target.value })} /></label>
           <div className="grid g2">

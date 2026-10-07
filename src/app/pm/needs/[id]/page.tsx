@@ -235,7 +235,8 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
             </tbody>
           </table>
         </div>
-        <details className="card" style={{ marginTop: ".75rem" }}>
+        {/* Next step once a Need is Planned: open by default until the first ticket exists. */}
+        <details className="card" style={{ marginTop: ".75rem" }} open={need.status === "planned" && ticketRows.length === 0}>
           <summary className="strong">Create a delivery ticket</summary>
           <form action={createTicketAction.bind(null, id)} style={{ marginTop: ".8rem" }}>
             <label className="field">Title <span className="req" aria-hidden="true">*</span><input type="text" name="title" required /></label>

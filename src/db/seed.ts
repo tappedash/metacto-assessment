@@ -131,6 +131,15 @@ export async function seed({ quiet = false } = {}) {
     createdAt: new Date(Date.now() - (r.daysAgo ?? 5) * 86_400_000),
   })));
 
+  // One borderline request waiting in PM Triage: related to "export", below the confidence threshold.
+  const triageWhy = "Our external auditors want the shipment audit report emailed to them every month; they don't have logins.";
+  const [triageVector] = await embeddings.embed([`Monthly audit report by email\n${triageWhy}`]);
+  await db.insert(s.requests).values({
+    title: "Monthly audit report by email", why: triageWhy, accountId: contoso.id, submittedBy: dana.id,
+    needId: need.export.id, linkType: "related", linkConfidence: 0.55, linkState: "triage" as const, embedding: triageVector,
+    linkReason: `Overlaps with "${need.export.title}", but below the confidence threshold.`, createdAt: new Date(Date.now() - 86_400_000),
+  });
+
   await db.insert(s.supports).values([
     { userId: lena.id, needId: need.export.id },
     { userId: omar.id, needId: need.export.id },
