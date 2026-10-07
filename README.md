@@ -1,250 +1,156 @@
 # Needs Hub
 
-AI-first Customer Needs platform for product teams in IT / consulting companies.
+## 1. The problem
 
-**Feature Request → AI understanding → Customer Need → PM decision → Delivery → Stakeholder update**
+IT and consulting firms hear the same customer problems through many channels: client users, engineers on engagements, account calls, files and screenshots. Each arrives as a differently worded request. Product Managers spend their time reading, deduplicating and chasing context, then lose the thread back to the customers who asked once something ships.
 
-Clients and engineers submit Feature Requests. AI matches each one to an existing Customer Need (the underlying product problem) while the user waits, so duplicates become evidence instead of noise. PMs compare Demand with Strategic Value, decide with AI-prefilled context, and approved updates flow back to customers.
+## 2. Core thesis
 
-> **Status: local MVP, full workflow implemented.** All four roles (client, engineer, product manager, workspace admin) work end to end with the mock AI (no key) or OpenAI. Sign-in uses Better Auth (magic link by email, optional Google) with invitation-only onboarding.
+> **AI turns noisy customer feedback into consolidated Customer Needs before Product Managers have to manually process it.**
 
-## Quick start
+- **AI handles semantic understanding:** it reads each request (text and files), plays back what it understood, finds the existing Customer Need it belongs to, and drafts briefs, scores and updates.
+- **PostgreSQL handles facts and state:** requests, Needs, evidence, decisions, tickets, timelines and permissions are plain relational data (with pgvector for retrieval).
+- **Humans make product decisions:** customers confirm or correct the AI, the PM decides and approves every outbound update, engineers deliver.
 
-Prerequisites: **Node.js ≥ 20.12** (`.nvmrc` pins 22), **Docker** (Docker Desktop) and `make`.
+The core workflow, and the only one that matters for the demo:
 
-```bash
-make            # checks prerequisites, creates .env, installs deps, starts Docker + containers,
-                # migrates, seeds demo data, then starts the app on the first free port from 3000
+**Customer Request → AI Understanding → Customer Need → PM Decision → Delivery → Customer Update / Validation**
+
+## 3. Architecture in two minutes
+
+```
+ Browser (Client · Engineer · PM · Admin)
+        │
+ Next.js modular monolith (App Router, server actions)
+   session → actor → server-side permissions (role, account, staffing)
+   domain services ── AI interfaces ── OpenAI | deterministic mock
+        │                    │
+ Postgres 17 + pgvector   Mailpit (SMTP, local inbox)
 ```
 
-`make help` lists every target. The ones you'll use most:
+- One Next.js process plus two Docker containers. No worker or queue: AI runs synchronously where the user is waiting (matching on submit, with a timeout that falls back to PM Triage) or on demand (AI Brief when the PM opens a Need).
+- Matching: embed the request → pgvector top-5 Customer Needs → structured `same | related | new` classification with confidence and a customer-readable reason.
+- Every AI output a person acts on is shown as a suggestion with its evidence; nothing is decided or sent by AI alone.
 
-| Command | Does |
-|---|---|
-| `make` / `make run` | Everything from a fresh clone to a running app (dev server) |
-| `make setup` | Prepare everything without starting the app |
-| `make dev` | Start the dev server (`PORT=3100 make dev` to prefer another port) |
-| `make start` | Production build and serve |
-| `make check` | Types, unit tests, integration tests (reseeds) and build |
-| `make seed` / `make reset` | Reset demo data / drop the database and rebuild it |
-| `make health` | Call `/api/health` (`PORT=` if not 3000) |
-| `make mail` | Open the Mailpit inbox |
-| `make down` / `make clean` | Stop containers / also delete the database volume and `.next` |
+Details, data model and tradeoffs: [`docs/architecture.md`](docs/architecture.md). Product spec: latest file in [`product_specs/`](product_specs/). Every UX workflow on one canvas: [`diagrams/platform_blueprint.excalidraw`](diagrams/platform_blueprint.excalidraw).
 
-`make` starts Docker Desktop on macOS if it isn't running, generates `BETTER_AUTH_SECRET` in `.env`, and picks the next free port if 3000 is taken (it then sets `BETTER_AUTH_URL` to that port for the run). Without make: `cp .env.example .env`, set `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), then `npm install && npm run setup && npm run dev`.
+## 4. Quick start
 
-## Sign in (local)
+**Prerequisites:** Node.js ≥ 20.12 (`.nvmrc` pins 22), Docker Desktop (or Docker Engine with Compose v2), `make`. No OpenAI key needed.
 
-Access is invitation-only. Sign in at http://localhost:3000/login with a seeded email and **Send magic link**; the email arrives in Mailpit (http://localhost:8025), and its link signs you in.
+```bash
+cp .env.example .env     # optional: `make` does it for you
+make run                 # = make: checks prerequisites, generates BETTER_AUTH_SECRET, installs deps,
+                         #   starts Postgres+pgvector and Mailpit, migrates, seeds, starts the app
+```
 
-| Role | Demo email |
-|---|---|
-| Client | `lena@northwind.example` (also `dana@contoso.example`, `omar@fabrikam.example`) |
-| Engineer | `ravi@needs-hub.local` (also `mia@`, `jo@`) |
-| Product Manager | `sam@needs-hub.local` |
-| Workspace Admin | `alex@needs-hub.local` |
-| Pending invitation | `maya@cedar.example`: the first sign-in creates her as a Cedar Clinics client from the invitation |
-
-Onboarding: the Admin invites email + role (+ client account) under **Users**; the invitee gets an email and, on first sign-in (magic link or Google with that email), is created with the invited role and account. Uninvited emails can't sign in. Roles and permissions are enforced by the app (`src/domain/session.ts`, `permissions.ts`), not by the auth library.
-
-### Google OAuth (optional)
-
-1. Google Cloud Console → APIs & Services → **OAuth consent screen**: External, add yourself as a test user.
-2. **Credentials → Create credentials → OAuth client ID** → Web application:
-   - Authorized JavaScript origin: `http://localhost:3000`
-   - Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
-3. Put the client ID and secret in `.env` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, restart `make dev`. *Continue with Google* appears on the sign-in page.
-
-Google only signs in invited or existing emails; it links to the existing user with the same email. If the app runs on another port, add that port's origin and callback too.
+The app starts on http://localhost:3000, or the next free port if 3000 is taken (printed in the terminal; sign-in links follow it).
 
 | URL | What |
 |---|---|
-| http://localhost:3000 | Sign in (magic link or Google), then your role's area |
-| http://localhost:3000/api/health | Readiness: database, pgvector, AI provider, SMTP |
-| http://localhost:8025 | Mailpit inbox (outbound email preview) |
+| http://localhost:3000/login | Sign in (magic link, or Google if configured) |
+| http://localhost:8025 | **Mailpit**: every email (magic links, notifications, updates) |
+| http://localhost:3000/api/health | Database, pgvector, AI provider, SMTP |
 
-Port 5433 busy? Change `DB_PORT` **and** the port in `DATABASE_URL` in `.env`.
+| Command | Does |
+|---|---|
+| `make health` | Calls `/api/health` on the port `make dev` chose |
+| `make test` | Unit tests (no database) |
+| `make check` | Types, unit tests, integration tests (reseeds), production build |
+| `make seed` | Reset demo data (safe to re-run) |
+| `make down` | Stop the containers (data kept) |
+| `make reset` | Drop the database, migrate and seed again |
+| `make clean` | Stop containers, delete the database volume and `.next`; `make run` starts fresh |
 
-### Check that it works
+Port 5433 taken? Set `DB_PORT` and the port in `DATABASE_URL` in `.env`.
+
+**Optional: OpenAI.** Set `AI_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_MODEL` and `OPENAI_EMBEDDING_MODEL` in `.env`, then `make seed` so stored embeddings come from the same model. The default `mock` provider is deterministic and runs the whole demo offline.
+
+**Optional: Google sign-in.** In Google Cloud Console create an OAuth client (Web application) with origin `http://localhost:3000` and redirect URI `http://localhost:3000/api/auth/callback/google`, put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`, restart. Google only signs in invited or existing emails.
+
+**Demo users and onboarding.** Access is invitation-only: the Admin invites an email with a role (and client account); the first sign-in creates the user from the invitation. Sign in with any seeded email via *Send magic link*, then open the link in Mailpit.
+
+| Role | Email |
+|---|---|
+| Client | `lena@northwind.example` (also `dana@contoso.example`, `omar@fabrikam.example`) |
+| Product Manager | `sam@needs-hub.local` |
+| Engineer | `ravi@needs-hub.local` (also `mia@`, `jo@`) |
+| Workspace Admin | `alex@needs-hub.local` |
+| Pending invitation | `maya@cedar.example` (first sign-in creates her as a Cedar Clinics client) |
+
+## 5. Demo walkthrough (about 10 minutes)
+
+1. **Lena (client) → Share Feedback.** Type "Get our numbers into Excel" and a line about copying costs into spreadsheets (or drop `docs/demo/weekly-report-process.pdf`). *Continue*: AI shows what it understood.
+2. **Refine it.** Answer AI's question or tell it what it missed, then *Refine with AI*; or edit the fields.
+3. **Match.** *Yes, find matching needs*: AI suggests **Use product data outside the platform** and why. *Yes, support this need*: the request becomes evidence instead of a duplicate.
+4. **Sam (PM) → Triage.** "Handled by AI" shows the confident matches that never needed him. One borderline request (55%) waits: accept the suggestion, move it, or create a new Need.
+5. **Sam → Customer Needs → the Need.** AI Brief (citing requests), Demand vs Strategic Value, AI-prefilled rubric. Choose *Plan*, a priority and a public rationale, *Save decision*. Approve the AI-drafted update under **Updates** (emails in Mailpit).
+6. **Create the Delivery Ticket** on the Need page (open by default once Planned), assigned to Ravi. Ravi is notified.
+7. **Ravi (engineer) → My Work.** After Sam moves it to Planned, move it to *In Development* and post a *Customer visible* update; Sam publishes it from the ticket page.
+8. **Lena → My Activity.** The ticket shows *In Development* and the published update; internal notes never appear.
+9. **Released → validate.** On a Released ticket (seeded: *Bulk rate import from CSV*), Lena chooses *Looks good* or *Something isn't right*. The rework form plays back what AI understood; Sam or Mia can reopen, create a follow-up ticket, or decline with a reason.
+
+`tests/integration/demo-journey.test.ts` runs this journey end to end.
+
+## 6. AI capability
+
+| Where | What AI does | Who decides |
+|---|---|---|
+| Share Feedback | Reads description + files (PDF, Word, Excel/CSV, screenshots); plays back problem, goal, workaround, impact; refines on the customer's reply | Customer confirms or corrects |
+| Matching | Embedding → pgvector top-5 → `same / related / new` + confidence + reason | Customer supports or says "mine is different"; below the Admin's threshold → PM Triage |
+| Need review | AI Brief citing request IDs; rubric prefill (reach, revenue, strategic fit against the Admin's goals, severity) | PM sets final scores and the decision |
+| Updates | Drafts the customer update on every Need status change | PM edits and approves; nothing is sent before |
+| Rework | Reads "something isn't right" into expected / actual / impact | Customer confirms; PM or engineer decides |
+| Ask Needs Hub | Answers a client's questions from their own requests, Needs and approved updates | Read-only; links outside their data are dropped |
+
+Providers sit behind two interfaces (`LanguageModel`, `EmbeddingProvider`): OpenAI (Responses API with zod structured outputs) or a deterministic mock for offline demos and tests.
+
+## 7. Key technical decisions and tradeoffs
+
+- **Modular monolith, no worker.** Simplest thing that proves the workflow; AI and email run in the request with timeouts and visible errors. Production path: a jobs table + worker, an email outbox with retries.
+- **Postgres + pgvector, exact search.** One store for facts and vectors; exact top-5 is fine at MVP volume (HNSW later).
+- **One AI vendor + mock.** One key and SDK; the mock keeps demos and tests reproducible but is not semantic.
+- **Authorization in the app.** Better Auth only answers "who is this?"; roles, client accounts and staffing are checked in the domain layer for every page and action.
+- **Fixed roles and stages.** Four roles; per-project ticket statuses map to four fixed stages and four public statuses, so customers see progress without internal detail.
+- **Notifications are synchronous and audited.** In-app + email per recipient, from entity relationships; no event bus.
+
+## 8. Scope boundaries
+
+| Class | Capabilities |
+|---|---|
+| **Core MVP** | Request intake (clients, and engineers on behalf of clients) with files · AI understanding and refinement · AI matching and supporting an existing Need · PM Triage for uncertain cases · Customer Needs (evidence, merge, split) · AI Brief and rubric prefill · PM decision with public rationale · AI-drafted updates approved by the PM · Delivery Tickets linked to Needs · public ticket status and customer-visible updates · customer validation and rework |
+| **MVP Support** | Authentication (Better Auth: magic link, optional Google, invitation-only onboarding) · Users and fixed roles · Accounts · Projects · Staffing · Notifications (in-app + email, preferences, audit) · per-project ticket statuses · Strategic goals · Workspace settings (match threshold, customer notification defaults) · Ask Needs Hub assistant |
+| **Optional Integration** | Jira (link tickets to issues, show status/assignee) · GitHub (link commits, PRs and branches to tickets) |
+| **Future / out of scope** | Background worker and email retries · SSO/SAML, MFA · custom roles, permission or workflow builders · sprints, epics, story points · webhooks and automation rules · product areas, segmentation analytics · production deployment |
+
+## 9. Optional Jira / GitHub integrations
+
+Configured per project under **Project → Integrations** (PM: *Projects → a project*; Admin: *Projects*). Without them, tickets live in Needs Hub and everything works.
+
+- **Jira:** site, project key, account email + API token (stored encrypted). The PM can create the Jira issue when creating a ticket or from the ticket (`T-107 → CARR-184`); the ticket shows Jira key, status, assignee, link and last sync. *Sync now* refreshes status.
+- **GitHub:** one or more `owner/name` repositories (token optional for public repos). *Sync now* reads recent commits, PRs and branches and links any that mention a ticket key (`T-107` or `CARR-184`) to that ticket as **Development activity**.
+- Customers never see Jira or GitHub data. The seeded *Carrier Automation* project uses an offline demo mode for both.
+
+## 10. Testing and AI evaluation
 
 ```bash
-curl -s localhost:3000/api/health
-# {"ok":true,"checks":{"database":{"ok":true,"pgvector":"0.8.7",...},"ai":{"provider":"mock",...},"smtp":{"ok":true}}}
-
-curl -s -X POST localhost:3000/api/match -H 'content-type: application/json' \
-  -d '{"title":"Export dashboard to Excel","why":"Finance reconciles costs in spreadsheets"}'
-# {"relation":"same","needId":"...","confidence":0.91,"reason":"Describes the same problem as \"Use product data outside the platform\".",...}
-
-npm test                  # unit tests (no database needed)
-npm run test:integration  # reseeds, then the full workflow end to end (needs npm run setup)
+make test               # 20 unit tests: permissions, mock AI, workflow rules
+make check              # types + unit + 76 integration tests (Postgres, pgvector, Mailpit) + build
+npm run eval:matching   # AI matching evaluation (read-only, on the seeded Needs)
 ```
 
-## Walk through the workflow
+Integration tests cover the demo journey, matching, triage, delivery tracking, validation and rework, notifications routing, admin configuration, integrations, and a role-by-role authorization audit.
 
-Sign in with each demo email in turn (magic links arrive in Mailpit; *Sign out* is at the bottom of the sidebar):
+**Matching evaluation** (`evals/matching-cases.json`, 20 cases: 6 obvious duplicates, 5 related-but-different, 5 new, 4 ambiguous) runs the product's pipeline and reports accuracy, the same/related/new breakdown, retrieval (expected Need in the top 5), confidence and every miss. Current result with the **mock** provider:
 
-1. **Lena Meyer (client)** → Share Feedback: drop `docs/demo/weekly-report-process.pdf` (or `weekly-shipment-report.csv`), optionally add a line of text, and click *Continue*. AI shows "AI reviewed your attachment" and "AI understood" (goal, current workaround, pain); correct anything and click *Yes, find matching needs*. It suggests **Use product data outside the platform** ("Is this your need?"). Click *Yes, support this need*: your request and file are now evidence.
-2. **Sam Kim (PM)** → Triage holds only uncertain cases. Customer Needs shows Demand and Strategic Value separately (dark mode: very high demand, low strategic value; SSO: medium demand, very high strategic value). Open *Use product data outside the platform*: the AI Brief cites the evidence (R1, R2...), the rubric shows AI scores next to your final scores. Pick a priority, choose *Plan*, write a rationale and *Save decision*. AI drafts a customer update; edit it in Updates and *Approve & send*.
-3. **Mailpit** (http://localhost:8025) shows the emails to requesters, supporters and staffed engineers.
-4. **Lena Meyer** → My Activity → the Need now shows *Planned*, the update and the public rationale. Click **✦ Ask Needs Hub** (top right) and ask "What happened to my Excel request?" or "What's the latest update?". You can also attach a file there: it suggests the matching Need and offers *Share this as feedback* (nothing is submitted without you).
-5. **Sam Kim (PM)** → Projects: each project has its own ticket statuses. *Identity Modernization* uses Backlog → Planned → Build → Security review → UAT → Client sign-off → Live. Add, rename, reorder or remove statuses; each belongs to a stage (Backlog, Planned, In progress, Done) that keeps permissions and Need progress working.
-6. **Ravi Patel (engineer)** → My Work: move T-101 from Planned to *In Development*. The Need moves to In Development and a new update draft waits for the PM. Open the ticket and follow *Why are we building this?* to the Need and its evidence (only from staffed clients). Log Client Feedback works like Share Feedback, with client and project.
-7. **Lena Meyer** → My Activity → *Your deliveries*: *Bulk rate import from CSV* is **Released** (Recent updates shows "… moved to Released"). Open it: progress (Planned → In Development → Ready for Review → Released) and updates the team shared with customers; Mia's internal note is not there. Choose *Something isn't right*, describe the problem (e.g. "I expected the import to update existing lanes, but it only adds new ones"), optionally attach a screenshot, and *Continue*: AI shows what it understood (expected / what happens / impact). Edit it or *Refine with AI*, then *Confirm and send to the team*. The ticket stays Released until the team decides.
-8. **Sam Kim (PM)** → Tickets shows "1 rework request needs review". Open T-107: read the request, write a note and *Reopen ticket* (it goes back to In Development and Lena sees your note) or *Don't reopen* (the note explains why). On any ticket, post updates as *Internal only* or *Customer visible*. In Projects, the status editor sets which In-progress statuses customers see as *Ready for Review* (Identity Modernization: UAT and Client sign-off).
-9. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
-
-| Role | Seeded users | Area |
-|---|---|---|
-| Client | Lena Meyer (Northwind), Dana Ruiz (Contoso), Omar Haddad (Fabrikam), + SMB clients | `/client/share`, `/client/discover`, `/client/activity`, `/client/needs/[id]`, `/client/tickets/[id]` |
-| Engineer | Ravi Patel (Northwind + Contoso), Mia Chen, Jo Osei | `/engineer/work`, `/engineer/projects`, `/engineer/log`, `/engineer/updates` |
-| Product Manager | Sam Kim | `/pm/triage`, `/pm/needs`, `/pm/tickets`, `/pm/projects`, `/pm/updates` |
-| Workspace Admin | Alex Lee | `/admin/clients`, `/admin/staffing`, `/admin/users`, `/admin/goals`, `/admin/needs` |
-
-`npm run db:seed` resets the demo data at any time.
-
-## Scripts
-
-| Script | Does |
+| Metric | Mock |
 |---|---|
-| `npm run dev` | Next.js dev server |
-| `npm run build` / `npm start` | Production build / serve |
-| `npm run typecheck` | TypeScript check |
-| `npm test` | Unit tests (Vitest): mock AI, classification, permissions |
-| `npm run test:integration` | Reseeds, then runs the end-to-end workflow and matching tests against Postgres + pgvector + Mailpit |
-| `npm run setup` | `db:up` + `db:migrate` + `db:seed` |
-| `npm run db:up` / `db:down` | Start / stop Postgres and Mailpit (Docker Compose) |
-| `npm run db:generate` | Generate a migration after changing `src/db/schema.ts` |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:seed` | Re-seed demo data (truncates first; safe to re-run) |
-| `npm run db:reset` | Drop everything, migrate, seed |
+| Accuracy | 11/20 (55%) |
+| same / related / new | 6/6 · 0/8 · 5/6 |
+| Expected Need retrieved in top 5 | 14/14 |
 
-## Configuration
+Retrieval and duplicate detection work; the keyword-based mock cannot tell *related* from *same*, which is exactly the judgement the OpenAI classifier is for. Run `AI_PROVIDER=openai make seed && AI_PROVIDER=openai npm run eval:matching` with a key to measure the real model.
 
-All variables are documented in [`.env.example`](.env.example) and validated at startup (`src/lib/env.ts`).
+---
 
-| Variable | Purpose |
-|---|---|
-| `DB_PORT`, `DATABASE_URL` | Postgres host port (Docker Compose) and connection string |
-| `AI_PROVIDER` | `mock` (default, no key) or `openai` |
-| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL` | Required when `AI_PROVIDER=openai` |
-| `AI_RECORD_FIXTURES` | `true` saves OpenAI structured outputs to `fixtures/ai/` for the mock to replay |
-| `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM` | Mailpit SMTP locally |
-| `MATCH_TIMEOUT_MS` | Timeout for synchronous matching (default 3000) |
-
-### AI providers
-
-Domain code depends on two interfaces only (`src/ai/types.ts`): `EmbeddingProvider` and `LanguageModel`.
-
-- **`mock`** (default): deterministic. Embeddings come from a hashing vectorizer with a small demo vocabulary (so "Excel", "CSV" and "Google Sheets" land near the same Customer Need), and each structured task has a deterministic handler. Recorded fixtures in `fixtures/ai/` are replayed first when present. Good for local development, demos and tests; not a semantic model.
-- **`openai`**: `OPENAI_EMBEDDING_MODEL` for embeddings (requested at 1536 dimensions to match the pgvector column) and `OPENAI_MODEL` via the Responses API with structured outputs (zod schemas). `src/ai/openai.ts` is the only file importing the OpenAI SDK.
-
-After switching providers, run `npm run db:seed` so stored embeddings come from the same model.
-
-## How matching works
-
-`POST /api/match` → `src/domain/matching.ts`:
-
-1. Embed the request (title + why).
-2. pgvector cosine search for the top-5 Customer Needs.
-3. Structured classification: `same` / `related` / `new`, with `needId`, `confidence` and a customer-readable `reason`. The chosen Need must be one of the candidates.
-4. Everything runs under `MATCH_TIMEOUT_MS`. On timeout or AI failure the result is `triage`: the request is never blocked, the PM decides.
-
-## Project structure
-
-```
-src/
-  app/                    Next.js App Router (server components + server actions)
-    (auth)/login/         demo sign-in (session cookie = seeded user id)
-    client/               Share Feedback, Discover, My Activity, public Need page
-    pm/                   Triage, Customer Needs, Need decision screen, Tickets, Projects (statuses), Updates
-    engineer/             My Work (Board/Backlog), Projects, Tickets, Needs, Log feedback, Updates
-    admin/                Clients, Staffing, Users, Strategic Goals, read-only Needs
-    actions/feedback.ts   intake server actions shared by clients and engineers
-    api/health/route.ts   readiness check
-    api/match/route.ts    synchronous matching endpoint (JSON)
-  components/             shell + sidebar, share flow, UI helpers
-  ai/
-    types.ts              LanguageModel, EmbeddingProvider interfaces
-    mock.ts               deterministic mock provider (+ fixture replay)
-    openai.ts             OpenAI implementations (only SDK import)
-    fixtures.ts           record / replay helpers
-    index.ts              getAi(): picks provider from AI_PROVIDER
-  db/
-    schema.ts             Drizzle schema (pgvector columns, 1536 dims)
-    client.ts             postgres-js + Drizzle client
-    seed.ts, reset.ts     demo data, database reset
-  domain/
-    session.ts            actor resolution + role guard (every page and action)
-    matching.ts           request -> embedding -> top-5 -> classification
-    ai-tasks.ts           AI task schemas, instructions and mock handlers
-    feedback.ts           follow-up, submit, support, Need refinement
-    needs.ts              Demand / Strategic signals, evidence, visibility
-    decisions.ts          AI Brief + rubric (on demand), decisions, update drafts, sending
-    triage.ts             accept / move / create Need / merge
-    delivery.ts           projects, tickets, moves, technical notes
-    tracking.ts           public ticket statuses, ticket timeline, customer delivery views
-    validation.ts         customer validation after release, rework requests and their review
-    workflow.ts           per-project ticket statuses (stages, validation, PM edits)
-    attachments.ts        uploads: storage, AI reading, permissions, evidence links
-    assistant.ts          client "Ask Needs Hub": grounded context, answers, link checks
-    admin.ts              clients, staffing, users, strategic goals
-    permissions.ts        server-side role / staffing / public-field rules
-  lib/
-    env.ts                validated configuration
-    env-loader.ts         loads .env for scripts and tests
-    mailer.ts             SMTP (Mailpit) sending
-drizzle/                  SQL migrations (0000 enables pgvector)
-tests/unit/               no database needed
-tests/integration/        workflow + matching; needs `npm run setup`
-docs/architecture.md      architecture, tradeoffs, production path
-product_specs/            versioned product spec (latest is the current spec)
-prototypes/               static clickable UI prototypes for all four roles
-diagrams/                 Excalidraw workflow diagrams; platform_blueprint.excalidraw shows every UX workflow by role
-```
-
-## Data model
-
-Two layers that meet only through **Ticket → Customer Need**:
-
-- **Product intelligence:** `requests` (Feature Requests, verbatim, with embeddings and match link) → `needs` (Customer Needs, with embeddings and cached AI Brief / rubric) + `supports`, `decisions`, `status_updates`.
-- **Delivery:** `accounts` (clients / prospects) → `projects` (+ `project_members`, `project_statuses`) → `tickets`. Ticket statuses are configured per project; each has a stage (backlog / planned / in_progress / done) that the rules use, and maps to a public status customers see. `ticket_events` is the ticket timeline (status moves, updates, validations; each Internal only or Customer visible) and `ticket_validations` holds Looks good / rework requests.
-- **Access:** `users` (admin / pm / engineer / client), `staffing` (which accounts an engineer may see), `strategic_goals`.
-
-Demand comes from Feature Requests, supporters and accounts, never from ticket counts.
-
-## Permissions
-
-`src/domain/permissions.ts` (pure, unit-tested), enforced on the server:
-
-- Engineers see evidence only for staffed accounts; contract value is Admin/PM only.
-- Engineers move only their own tickets, Planned → In Development → Released; Backlog → Planned is a PM decision.
-- Client users get public Need fields only (`toPublicNeed`).
-
-## Known limitations (MVP)
-
-- Authentication is local-MVP grade: magic links and Google via Better Auth with sessions in Postgres; no SSO/SAML, MFA or rate limiting.
-- AI runs inside requests (no worker): the PM waits a moment when a Need's evidence changed or a decision is saved. Emails are sent in the request with no retries.
-- Splitting a Customer Need is not implemented (merging is).
-- The mock AI matches with a small built-in vocabulary and reads files with simple rules; use `AI_PROVIDER=openai` for real semantic matching, better file understanding and screenshot reading.
-- Uploaded files are stored on local disk (`storage/`, gitignored); `make clean` does not delete them.
-
-## Architecture
-
-One Next.js process plus two containers (Postgres + pgvector, Mailpit). No worker or queue in the MVP: AI runs synchronously on submit, on demand when a PM opens a Need, or when the PM saves a decision. Details, tradeoffs and the production path: [`docs/architecture.md`](docs/architecture.md).
-
-## Working conventions
-
-- Commit messages: `feature <scope_name> : <changes_made>`, with a body explaining intent.
-- Every new requirement implemented in scope gets its own commit (see [`SKILLS.MD`](SKILLS.MD)).
-- Every prompt is logged in `prompts.txt` (see `CLAUDE.MD`).
-- Spec changes are new timestamped files in `product_specs/`; earlier versions are never edited.
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `port is already allocated` on `db:up` | Another container uses the port: set `DB_PORT` (and `DATABASE_URL`) in `.env` |
-| `Cannot connect to the Docker daemon` | Start Docker Desktop (`make docker` does it on macOS) |
-| `Invalid environment configuration` | Copy `.env.example` to `.env`; with `AI_PROVIDER=openai` set the three `OPENAI_*` variables |
-| Odd matches after switching AI provider | `npm run db:seed` to re-embed with the current provider |
-| Start from scratch | `make clean && make` |
+Conventions: commits `feature <scope> : <change>` (see [`SKILLS.MD`](SKILLS.MD)); every prompt is logged in `prompts.txt`; spec versions are new files in `product_specs/`.

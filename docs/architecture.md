@@ -3,16 +3,27 @@
 | Field | Value |
 |---|---|
 | Scope | Local MVP: the simplest architecture that proves the end-to-end workflow |
-| Product spec | latest file in `product_specs/` (v0.6 adds customer delivery tracking and validation) |
+| Product spec | latest file in `product_specs/` (v0.7: scope classification, configuration, notifications, optional integrations) |
 | AI provider | OpenAI (single vendor), with a deterministic mock for running without a key |
 
 ## Goals
 
 Prove this workflow on one developer machine:
 
-**Feature Request → AI understanding → Customer Need → PM decision → Delivery → Customer tracking → Validation / rework → Stakeholder update**
+**Customer Request → AI Understanding → Customer Need → PM Decision → Delivery → Customer Update / Validation**
 
-The full set of UX workflows by role is in `diagrams/platform_blueprint.excalidraw`.
+AI handles semantic understanding, PostgreSQL handles facts and state, humans make product decisions. The full set of UX workflows by role is in `diagrams/platform_blueprint.excalidraw`.
+
+## Scope classification
+
+| Class | Capabilities |
+|---|---|
+| **Core MVP** | Request intake (clients, and engineers on behalf of clients) with files · AI understanding and refinement · AI matching and supporting an existing Need · PM Triage for uncertain cases · Customer Needs (evidence, merge, split) · AI Brief and rubric prefill · PM decision with public rationale · AI-drafted updates approved by the PM · Delivery Tickets linked to Needs · public ticket status and customer-visible updates · customer validation and rework |
+| **MVP Support** | Authentication (Better Auth: magic link, optional Google, invitation-only onboarding) · Users and fixed roles · Accounts · Projects · Staffing · Notifications (in-app + email, preferences, audit) · per-project ticket statuses · Strategic goals · Workspace settings (match threshold, customer notification defaults) · Ask Needs Hub assistant |
+| **Optional Integration** | Jira (link tickets to issues, show status/assignee) · GitHub (link commits, PRs and branches to tickets) |
+| **Future / out of scope** | Background worker and email retries · SSO/SAML, MFA · custom roles, permission or workflow builders · sprints, epics, story points · webhooks and automation rules · product areas, segmentation analytics · production deployment |
+
+Scope is frozen at this classification for the assessment.
 
 Keep: a Next.js modular monolith, PostgreSQL + pgvector, OpenAI for embeddings and language tasks, Drizzle migrations, seeded demo data, server-side role/staffing permissions, synchronous AI matching on submission, structured AI outputs, Mailpit for the update loop, mock AI mode.
 
@@ -86,6 +97,7 @@ Deliberately removed for now (see "Production path"): a separate worker process,
 | AI Brief + rubric prefill | **On demand** when the PM opens a Need whose evidence changed since the last generation. Cached on the Need with the evidence count and timestamp; a "Regenerate" button forces a refresh. |
 | Draft stakeholder update | When the PM saves a decision (loading state while it runs). |
 | Understand a rework request | Synchronously when the customer clicks *Continue* (and again on *Refine with AI*) in "Something isn't right": description + files → expected / what happens / impact. Nothing is saved until they confirm. |
+| Understand a customer request | When the customer clicks *Continue* (and again on *Refine with AI* with their reply): description + files → summary, goal, workaround, impact. |
 | Send emails | When the PM approves the update: one SMTP send per recipient to Mailpit; failures are listed to the PM, no retries. |
 
 AI outputs that the product shows as conclusions (AI Brief, rubric suggestions) store the request IDs they cite, so every conclusion stays traceable to raw customer evidence.
@@ -113,7 +125,8 @@ PostgreSQL 17 with pgvector, schema in `src/db/schema.ts`, migrations in `drizzl
 Two separate layers that meet only through Ticket → Customer Need:
 
 - Product intelligence: Feature Request → Customer Need (+ supports, decisions, status updates)
-- Delivery: Account (client) → Project → Ticket, with ticket statuses configured per project (each mapped to a fixed stage that the rules use)
+- Delivery: Account (client) → Project → Ticket, with ticket statuses configured per project (each mapped to a fixed stage that the rules use and a public status customers see); `ticket_events` (timeline with visibility and publish time) and `ticket_validations` (Looks good / rework)
+- Support: `notifications` (inbox + audit), `workspace_settings`, `project_integrations`, `github_activity`
 
 ## Attachments and the client Assistant
 
@@ -127,6 +140,32 @@ Two separate layers that meet only through Ticket → Customer Need:
 - **Timeline:** `ticket_events` records every status move, update and validation with a visibility (`internal` / `customer`). A status move is customer-visible only when the public status changes. Customer pages and My Activity read only customer-visible events, only for tickets in the customer's own company's projects on Needs they follow.
 - **Validation:** after Released, `ticket_validations` stores Looks good or a rework request (customer-confirmed AI context, files linked by `validation_id`). The PM or a staffed engineer reopens (ticket back to the first In-progress status, with a customer-visible note) or declines with a reason. Customers never change ticket status.
 
+## Notifications
+
+`src/domain/notifications.ts`: one `notify(event)` call per important action, made by the domain service that performed it (no event bus). Recipients come from relationships, never from hardcoded addresses:
+
+| Event | Recipients |
+|---|---|
+| New request needing triage | The client account's responsible PM (or every PM) |
+| Need update approved | Supporters and client requesters of the Need, staffed engineers |
+| Ticket created / assigned / priority | Assignee; PM / Need owner |
+| Ticket status change | PM / Need owner and assignee; customers of that client following the Need only when the public status changes (and the Admin's toggle allows it) |
+| Engineer customer-visible update | PM to approve; customers once published |
+| Rework submitted / decided | Assignee and PM / customer and assignee |
+| Need owner, project staffing | The new owner / newly staffed engineers |
+| Jira linked or blocked, PR linked | Assignee and PM (no per-commit noise) |
+
+Each recipient gets an in-app row and an email (Mailpit locally) according to their two preferences; assignment and rework always reach the inbox. Every attempt is stored (event, entity, recipient, channel, status, sent time, error). Actors are never notified about their own actions; deactivated users never are.
+
+## Optional integrations
+
+Per project, configured by the Admin or PM (`src/domain/integrations.ts`, clients in `src/integrations/`). Without them, tickets live in Needs Hub only.
+
+- **Jira** behind a `TicketConnector` interface: `LocalTicketConnector` (default, no external system) or `JiraTicketConnector` (Jira Cloud REST v3: create issue, read status and assignee). The ticket stores the issue key, URL, status, assignee and last sync. Needs Hub status stays the source of truth for customers; Jira status is shown to the team only.
+- **GitHub**: *Sync now* reads recent commits, PRs and branches per repository and links any item whose message, branch or title mentions a ticket key (local `T-107` or Jira `CARR-184`).
+- Tokens are encrypted (AES-256-GCM, key derived from `BETTER_AUTH_SECRET`) and never returned to the browser. An offline demo mode keeps the seeded demo self-contained. No webhooks.
+- Customers never see Jira or GitHub data: customer queries read only public statuses and published customer-visible events.
+
 ## Authentication
 
 - **Better Auth** (`src/lib/auth.ts`) with sessions in Postgres (`auth_sessions`, `auth_accounts`, `auth_verifications`) via the Drizzle adapter. Better Auth's user model is the app's `users` table; `role` and `accountId` are server-owned fields.
@@ -138,15 +177,31 @@ Two separate layers that meet only through Ticket → Customer Need:
 
 Enforced server-side (`src/domain/permissions.ts`), never only in the UI:
 
-- Engineers see client details and evidence only for accounts they are staffed on; other clients appear as counts. No contract value.
-- Engineers move only their own tickets, and only Planned → In Development → Released. Backlog → Planned is a PM decision.
-- Client users see only public Need fields (problem statement, status, public rationale, supporter count).
+- Engineers see client details, evidence, tickets and GitHub activity only for accounts they are staffed on (staffing is Engineer → Account → Project); other clients appear as counts. No contract value.
+- Engineers move only their own tickets; Backlog → Planned is a PM decision. Tickets can only be assigned to active engineers staffed on that client.
+- Engineers' customer-visible updates reach customers only after the PM publishes them.
+- Client users see only public Need fields, their own company's tickets on Needs they follow (public status, published customer-visible updates) and their own requests and files.
+- The Admin manages users, accounts, projects, staffing, strategic goals and settings, and is read-only on product decisions. Deactivated users are signed out and can't sign in.
 
 ## Local setup
 
 - Docker Compose runs Postgres (pgvector) and Mailpit only; the app runs on the host with `next dev`.
 - `.env.example` documents every variable; `AI_PROVIDER=mock` needs no API key.
-- `npm run setup` starts the containers, runs migrations and seeds demo data.
+- `make run` (from a fresh clone, after optional `cp .env.example .env`) checks prerequisites, generates `BETTER_AUTH_SECRET`, installs dependencies, starts the containers, migrates, seeds and starts the app on the first free port from 3000. `make health`, `make test`, `make check` verify it.
+
+## Code map
+
+```
+src/app/            App Router: one area per role (client/, pm/, engineer/, admin/), shared server actions (actions/), API routes (api/)
+src/components/     shell, share flow, timelines, rework, integrations, inbox
+src/domain/         session + permissions, feedback/matching/triage, needs/decisions, delivery/workflow/tracking/validation,
+                    notifications, settings, admin/invitations, integrations, attachments, assistant
+src/integrations/   Jira and GitHub clients behind the connector types (types.ts)
+src/ai/             LanguageModel / EmbeddingProvider interfaces, OpenAI and mock providers
+src/db/             Drizzle schema, client, seed; migrations in drizzle/
+tests/              unit/ (no database) and integration/ (Postgres + pgvector + Mailpit)
+evals/, scripts/    matching evaluation dataset and harness (npm run eval:matching)
+```
 
 ## Tradeoffs
 
@@ -160,8 +215,8 @@ Enforced server-side (`src/domain/permissions.ts`), never only in the UI:
 
 ## Production path (deferred, in order)
 
-1. Postgres jobs table + separate worker, moving AI work and email out of the request path.
-2. Idempotent, retried email sending through a production provider.
+1. Postgres jobs table + separate worker, moving AI work, notification email and integration syncs out of the request path.
+2. Idempotent, retried email sending through a production provider (notification rows already record each attempt).
 3. An `ai_runs` log for prompt/version debugging.
 4. Deployment and scaling (HNSW index when vector volume grows).
 
