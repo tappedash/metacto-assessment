@@ -1,0 +1,32 @@
+name: needs-hub
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: needs
+      POSTGRES_PASSWORD: needs
+      POSTGRES_DB: needs_hub
+    ports:
+      - "${DB_PORT:-5433}:5432" # host port from .env (default 5433 avoids a local Postgres on 5432)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U needs -d needs_hub"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # inbox UI
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata: {}
