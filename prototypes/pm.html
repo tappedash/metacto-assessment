@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Needs Hub — Product Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html"><span class="dot"></span>Needs Hub</a>
+  <nav class="nav" aria-label="Product Manager">
+    <button data-view="triage" aria-current="page"><span class="ico i-inbox" aria-hidden="true"></span><span class="label">Triage</span><span class="count" data-count aria-hidden="true">4</span></button>
+    <button data-view="needs"><span class="ico i-layers" aria-hidden="true"></span><span class="label">Customer Needs</span></button>
+    <button data-view="tickets"><span class="ico i-kanban" aria-hidden="true"></span><span class="label">Tickets</span></button>
+    <button data-view="updates"><span class="ico i-send" aria-hidden="true"></span><span class="label">Updates</span><span class="count" id="updates-count" aria-hidden="true">1</span></button>
+  </nav>
+  <div class="user">
+    <span class="avatar" aria-hidden="true">SK</span>
+    <div class="user-meta"><b>Sam Kim</b><span>Product Manager</span></div>
+  </div>
+</aside>
+
+<main id="main" tabindex="-1">
+<div class="page">
+
+  <!-- ================= TRIAGE ================= -->
+  <section id="triage" class="view active" aria-labelledby="h-triage">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Triage</span>
+        <h1 id="h-triage">4 items need your judgment</h1>
+        <p class="lede">AI handled the obvious cases. These are the matches it wasn't sure about, proposed new Customer Needs, and flags from engineers.</p>
+      </div>
+    </div>
+
+    <details class="notice">
+      <summary><span class="ai-tag">AI attached 37 Feature Requests to existing Customer Needs this week</span> <span class="muted">· view recent</span></summary>
+      <ul class="muted" style="margin:.6rem 0 0;padding-left:1.1rem;width:100%">
+        <li><b class="strong">"Export dashboard to Excel"</b> → Use product data outside the platform · Northwind Logistics · confirmed by the client</li>
+        <li><b class="strong">"Okta SSO for our 400 users"</b> → Sign in with company identity · Fabrikam Retail · 96% confidence</li>
+        <li><b class="strong">"CSV of all orders"</b> → Use product data outside the platform · Fabrikam Retail · 93% confidence</li>
+      </ul>
+    </details>
+
+    <div class="card flush list">
+
+      <article class="item" aria-label="Related match: Power BI">
+        <div class="item-head">
+          <span class="rel rel-related">Related</span>
+          <span class="ai-tag">62% confidence</span>
+          <span class="muted">· Contoso Health · Enterprise · logged by engineer Ravi Patel</span>
+        </div>
+        <div class="item-body">
+          <div>
+            <p class="quote">"Push weekly KPIs into our Power BI workspace."</p>
+            <p class="muted">Why: leadership reviews KPIs in Power BI; an analyst rebuilds them by hand every Monday.</p>
+            <p class="proposal"><span class="ai-tag">Suggested Customer Need</span> <button class="btn-link" data-go="need">Use product data outside the platform</button> — same job (use data in their own tools), but asks for a live connection rather than a file export.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-dark btn-sm" data-resolve="Accepted into Use product data outside the platform">Accept</button>
+            <button class="btn btn-ghost btn-sm" data-toast="Choose a Customer Need">Move…</button>
+            <button class="btn btn-ghost btn-sm" data-resolve="New Customer Need created from this request">Create new Need</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="item" aria-label="New Customer Need: carrier rates">
+        <div class="item-head">
+          <span class="rel rel-new">New</span>
+          <span class="ai-tag">No existing Customer Need matched</span>
+          <span class="muted">· Northwind Logistics · Mid-market · client</span>
+        </div>
+        <div class="item-body">
+          <div>
+            <p class="quote">"Bulk edit carrier rates."</p>
+            <p class="muted">Why: rates change quarterly for 200+ lanes and we update them one by one.</p>
+            <p class="proposal"><span class="ai-tag">Suggested Customer Need</span> <b>Operations teams need to update many carrier rates at once</b> because rate cards change quarterly; today they edit each lane manually.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-dark btn-sm" data-resolve="New Customer Need created: carrier rates">Create new Need</button>
+            <button class="btn btn-ghost btn-sm" data-toast="Editing problem statement">Edit statement</button>
+            <button class="btn btn-ghost btn-sm" data-toast="Choose a Customer Need">Move…</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="item" aria-label="Possible duplicate Customer Needs">
+        <div class="item-head">
+          <span class="rel rel-same">Same</span>
+          <span class="ai-tag">71% confidence · possible duplicate Needs</span>
+        </div>
+        <div class="item-body">
+          <div>
+            <p class="strong"><button class="btn-link" data-go="need">Sign in with company identity</button> <span class="muted">(38 supporters)</span> + Okta login support <span class="muted">(9 supporters)</span></p>
+            <p class="muted">Both describe the same job — let IT manage access centrally — and share 9 of 14 accounts.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-dark btn-sm" data-resolve="Merged into Sign in with company identity · evidence combined">Merge</button>
+            <button class="btn btn-ghost btn-sm" data-resolve="Kept as separate Customer Needs">Keep separate</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="item" aria-label="Engineer flag: split">
+        <div class="item-head">
+          <span class="rel rel-related">Flag</span>
+          <span class="muted">Raised by engineer Mia Chen</span>
+        </div>
+        <div class="item-body">
+          <div>
+            <p class="strong"><button class="btn-link" data-go="need">Know about delays before customers do</button> may be two problems</p>
+            <p class="muted">Half of the 7 requests want internal SLA-breach alerts; half want customer-facing tracking emails.</p>
+          </div>
+          <div class="actions">
+            <button class="btn btn-dark btn-sm" data-resolve="Split into two Customer Needs">Split…</button>
+            <button class="btn btn-ghost btn-sm" data-resolve="Kept as one Customer Need">Keep separate</button>
+          </div>
+        </div>
+      </article>
+    </div>
+    <div id="triage-empty" class="card empty hidden" style="margin-top:1rem">
+      <h2>All caught up</h2>
+      <p class="muted">AI will route new uncertain matches here. Everything else is attached automatically.</p>
+      <button class="btn btn-ghost btn-sm" data-go="needs" style="margin-top:.8rem">Review Customer Needs</button>
+    </div>
+  </section>
+
+  <!-- ================= CUSTOMER NEEDS ================= -->
+  <section id="needs" class="view" aria-labelledby="h-needs">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Customer Needs</span>
+        <h1 id="h-needs">Popular isn't the same as important</h1>
+        <p class="lede">Demand and Strategic Value are measured separately. Sort by either to see where they disagree.</p>
+      </div>
+      <fieldset class="segmented">
+        <legend>Sort by</legend>
+        <input type="radio" name="sort" id="sort-d" checked><label for="sort-d">Sort: Demand</label>
+        <input type="radio" name="sort" id="sort-s"><label for="sort-s">Sort: Strategic Value</label>
+      </fieldset>
+    </div>
+
+    <div class="card flush">
+      <table class="stack-sm">
+        <thead>
+          <tr>
+            <th scope="col">Customer Need</th>
+            <th scope="col" class="group-demand divider">Demand</th>
+            <th scope="col" class="group-demand">Requests · Accounts</th>
+            <th scope="col" class="group-strategic divider">Strategic Value</th>
+            <th scope="col" class="group-strategic">Enterprise · Contract value</th>
+            <th scope="col" class="divider">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="primary"><button class="row-link" data-go="need">Use product data outside the platform</button><br><span class="muted">52 supporters · ↑38% (30d)</span></td>
+            <td data-label="Demand" class="divider"><span class="level demand"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>High</span></td>
+            <td data-label="Requests · Accounts">24 · 8</td>
+            <td data-label="Strategic Value" class="divider"><span class="level strategic"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>High</span></td>
+            <td data-label="Enterprise · Contract value">5 · $2.4M</td>
+            <td data-label="Status" class="divider"><span class="chip st-review">Under Review</span></td>
+          </tr>
+          <tr>
+            <td class="primary"><button class="row-link" data-go="need">Dark mode for the dashboard</button><br><span class="muted">64 supporters · → 2% (30d)</span></td>
+            <td data-label="Demand" class="divider"><span class="level demand"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Very high</span></td>
+            <td data-label="Requests · Accounts">31 · 19</td>
+            <td data-label="Strategic Value" class="divider"><span class="level strategic"><span class="bars" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span>Low</span></td>
+            <td data-label="Enterprise · Contract value">1 · $0.8M</td>
+            <td data-label="Status" class="divider"><span class="chip st-notplanned">Not Planned</span></td>
+          </tr>
+          <tr>
+            <td class="primary"><button class="row-link" data-go="need">Sign in with company identity</button><br><span class="muted">38 supporters · ↑21% (30d)</span></td>
+            <td data-label="Demand" class="divider"><span class="level demand"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i><i></i></span>Medium</span></td>
+            <td data-label="Requests · Accounts">11 · 6</td>
+            <td data-label="Strategic Value" class="divider"><span class="level strategic"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Very high</span></td>
+            <td data-label="Enterprise · Contract value">6 · $3.1M</td>
+            <td data-label="Status" class="divider"><span class="chip st-dev">In Development</span></td>
+          </tr>
+          <tr>
+            <td class="primary"><button class="row-link" data-go="need">Know about delays before customers do</button><br><span class="muted">17 supporters · ↑54% (30d)</span></td>
+            <td data-label="Demand" class="divider"><span class="level demand"><span class="bars" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span>Low</span></td>
+            <td data-label="Requests · Accounts">7 · 4</td>
+            <td data-label="Strategic Value" class="divider"><span class="level strategic"><span class="bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>High</span></td>
+            <td data-label="Enterprise · Contract value">3 · $1.6M</td>
+            <td data-label="Status" class="divider"><span class="chip st-review">Under Review</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= CUSTOMER NEED DETAIL ================= -->
+  <section id="need" class="view narrow" data-nav="needs" aria-labelledby="h-need">
+    <button class="back" data-back="needs"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">Back</span></button>
+
+    <!-- 1. Problem statement -->
+    <div class="page-head" style="margin-bottom:0">
+      <div>
+        <span class="eyebrow">Customer Need</span>
+        <h1 id="h-need">Use product data outside the platform</h1>
+        <p class="lede"><b class="strong">Operations and finance teams</b> need to use shipment and report data in their own tools <b class="strong">because</b> they reconcile and report weekly outside the platform; <b class="strong">today they</b> copy numbers by hand.</p>
+      </div>
+      <div class="btn-row"><span class="chip st-review" id="need-status">Under Review</span><button class="btn btn-ghost btn-sm" data-toast="Editing problem statement">Edit statement</button></div>
+    </div>
+
+    <!-- 2. AI Brief -->
+    <div class="section">
+      <div class="ai-panel">
+        <span class="ai-tag">AI Brief</span>
+        <p style="color:var(--ink);margin-top:.4rem">Demand is rising (↑38% in 30 days). Most clients want report data in spreadsheets for weekly finance reconciliation <a class="cite" href="#r52">R52</a> <a class="cite" href="#r18">R18</a>. Enterprise accounts additionally ask for live BI-tool connections <a class="cite" href="#r40">R40</a>. The common workaround is manual copy-paste, about 2 hours a week per team <a class="cite" href="#r52">R52</a>.</p>
+        <div class="based-on">
+          <span>Based on</span><b>24 Feature Requests</b><b>8 accounts</b><b>5 enterprise accounts</b>
+          <a href="#evidence" class="btn-link">View evidence</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 + 4. Demand vs Strategic Value -->
+    <div class="section grid g2">
+      <div class="card panel-demand">
+        <div class="section-head" style="margin:0"><h2><span class="num">3</span>Demand</h2><span class="muted">How many are asking</span></div>
+        <dl class="sig">
+          <dt>Linked Feature Requests</dt><dd>24</dd>
+          <dt>Unique supporters</dt><dd>52</dd>
+          <dt>Unique accounts</dt><dd>8</dd>
+          <dt>Last 30 days vs prior</dt><dd>↑ 38%</dd>
+        </dl>
+      </div>
+      <div class="card panel-strategic">
+        <div class="section-head" style="margin:0"><h2><span class="num">4</span>Strategic Value</h2><span class="muted">How much it matters</span></div>
+        <dl class="sig">
+          <dt>Enterprise accounts affected</dt><dd>5</dd>
+          <dt>Contract value affected</dt><dd>$2.4M</dd>
+          <dt>Goal alignment</dt><dd>G2 · Enterprise logistics</dd>
+          <dt>Severity reported</dt><dd>Blocks weekly workflow</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- 5. Evidence -->
+    <div class="section" id="evidence">
+      <div class="section-head"><h2><span class="num">5</span>Evidence</h2><span class="muted">Feature Requests, verbatim · 24</span></div>
+      <div class="card flush list">
+        <div class="item" id="r52">
+          <p class="muted">R52 · Northwind Logistics · client · Oct 1 · supported via AI match</p>
+          <p class="quote">"Export dashboard to Excel." — Our finance team reconciles shipping costs every Monday in their own spreadsheets. Today I copy numbers by hand.</p>
+        </div>
+        <div class="item" id="r40">
+          <p class="muted">R40 · Contoso Health · logged by engineer Ravi Patel · Sep 24</p>
+          <p class="quote">"Push weekly KPIs into Power BI." — Leadership reviews KPIs there; an analyst rebuilds them every Monday.</p>
+        </div>
+        <div class="item" id="r18">
+          <p class="muted">R18 · Fabrikam Retail · client · Sep 12</p>
+          <p class="quote">"CSV download of all orders." — We join it with ERP data for month-end close.</p>
+        </div>
+        <div class="item"><button class="btn-link" data-toast="Showing all 24 Feature Requests">Show all 24 Feature Requests</button></div>
+      </div>
+    </div>
+
+    <!-- 6. Prioritization -->
+    <div class="section">
+      <div class="section-head"><h2><span class="num">6</span>Prioritization</h2><span class="ai-tag">AI Recommendation: P1</span></div>
+      <div class="card">
+        <p class="muted" style="margin-bottom:.8rem">AI scores each criterion from the evidence. You set the final values.</p>
+        <table class="stack-sm">
+          <thead><tr><th scope="col">Criterion</th><th scope="col">AI recommendation</th><th scope="col">PM final</th></tr></thead>
+          <tbody>
+            <tr><td class="primary">Reach <span class="muted">· 8 accounts, 52 supporters</span></td><td data-label="AI"><span class="ai-tag">4</span></td><td data-label="PM final"><input type="number" min="1" max="5" value="4" aria-label="Reach, PM final" style="width:72px;margin:0"></td></tr>
+            <tr><td class="primary">Revenue impact <span class="muted">· $2.4M affected</span></td><td data-label="AI"><span class="ai-tag">5</span></td><td data-label="PM final"><input type="number" min="1" max="5" value="4" aria-label="Revenue impact, PM final" style="width:72px;margin:0"></td></tr>
+            <tr><td class="primary">Strategic fit <span class="muted">· G2</span></td><td data-label="AI"><span class="ai-tag">3</span></td><td data-label="PM final"><input type="number" min="1" max="5" value="3" aria-label="Strategic fit, PM final" style="width:72px;margin:0"></td></tr>
+            <tr><td class="primary">Severity <span class="muted">· <a class="cite" href="#r52">R52</a></span></td><td data-label="AI"><span class="ai-tag">4</span></td><td data-label="PM final"><input type="number" min="1" max="5" value="5" aria-label="Severity, PM final" style="width:72px;margin:0"></td></tr>
+            <tr><td class="primary">Effort <span class="muted">· lower is easier</span></td><td data-label="Engineer estimate"><span class="strong" style="font-size:12.5px">Engineer: M</span></td><td data-label="PM final"><input type="number" min="1" max="5" value="3" aria-label="Effort, PM final" style="width:72px;margin:0"></td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:1.1rem">
+          <p class="strong" id="prio-label" style="margin-bottom:.4rem">Final priority</p>
+          <fieldset class="segmented" aria-labelledby="prio-label">
+            <legend>Final priority</legend>
+            <input type="radio" name="prio" id="p0"><label for="p0">P0</label>
+            <input type="radio" name="prio" id="p1" checked><label for="p1">P1 <span class="rec">· AI pick</span></label>
+            <input type="radio" name="prio" id="p2"><label for="p2">P2</label>
+            <input type="radio" name="prio" id="p3"><label for="p3">P3</label>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Decision -->
+    <div class="section">
+      <div class="section-head"><h2><span class="num">7</span>Decision</h2><span class="muted">AI recommends. You decide.</span></div>
+      <div class="card">
+        <fieldset class="segmented" style="margin-bottom:1rem">
+          <legend>Decision</legend>
+          <input type="radio" name="decision" id="d-plan" checked><label for="d-plan">Plan</label>
+          <input type="radio" name="decision" id="d-defer"><label for="d-defer">Defer</label>
+          <input type="radio" name="decision" id="d-info"><label for="d-info">Need more info</label>
+          <input type="radio" name="decision" id="d-no"><label for="d-no">Not planned</label>
+        </fieldset>
+        <label class="field" for="rationale">Rationale <span class="req" aria-hidden="true">*</span> <span class="hint">(required · shown to customers)</span>
+          <textarea id="rationale" required aria-required="true" aria-describedby="rationale-err" placeholder="Why this decision? Customers will see this."></textarea>
+        </label>
+        <p id="rationale-err" class="error hidden" role="alert">Add a rationale before saving. Customers see it next to the decision.</p>
+        <button class="btn btn-primary" id="save-decision">Save decision</button>
+      </div>
+    </div>
+
+    <!-- 8. Timeline / communication -->
+    <div class="section">
+      <div class="section-head"><h2><span class="num">8</span>Timeline</h2></div>
+      <div class="card">
+        <ol class="timeline" id="need-timeline">
+          <li class="done"><span class="strong">Customer Need created</span> <span class="when">· Aug 28</span><br><span class="muted">AI grouped 3 Feature Requests about exporting data.</span></li>
+          <li class="done"><span class="strong">"Export dashboard to Excel" supported</span> <span class="when">· Oct 1</span><br><span class="muted">Northwind Logistics confirmed the AI match; added as evidence.</span></li>
+          <li class="now"><span class="strong">Under Review</span><br><span class="muted">No customer updates sent yet.</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TICKETS ================= -->
+  <section id="tickets" class="view" aria-labelledby="h-tickets">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Tickets</span>
+        <h1 id="h-tickets">Every Customer Need, from review to release</h1>
+        <p class="lede">You own decisions. Engineers move delivery status on tickets assigned to them.</p>
+      </div>
+    </div>
+    <div class="board">
+      <div class="col"><div class="col-head"><h2>Under Review</h2><span>2</span></div>
+        <button class="ticket" data-go="need"><span class="t-title">Use product data outside the platform</span><span class="muted">24 requests · 8 accounts</span><span class="meta"><span class="chip">Unassigned</span></span></button>
+        <button class="ticket" data-go="need"><span class="t-title">Know about delays before customers do</span><span class="muted">7 requests · 4 accounts</span></button>
+      </div>
+      <div class="col"><div class="col-head"><h2>Planned</h2><span>1</span></div>
+        <button class="ticket" data-go="need"><span class="t-title">Bulk export audit history</span><span class="muted">P2</span><span class="meta"><span class="chip">Mia Chen</span></span></button>
+      </div>
+      <div class="col"><div class="col-head"><h2>In Development</h2><span>1</span></div>
+        <button class="ticket" data-go="need"><span class="t-title">Sign in with company identity</span><span class="muted">P1 · effort L</span><span class="meta"><span class="chip">Ravi Patel</span><span class="chip">Jo Osei</span></span></button>
+      </div>
+      <div class="col"><div class="col-head"><h2>Released</h2><span>1</span></div>
+        <button class="ticket" data-go="need"><span class="t-title">Audit log export</span><span class="muted">Released Sep 30</span></button>
+      </div>
+      <div class="col"><div class="col-head"><h2>Not Planned</h2><span>1</span></div>
+        <button class="ticket" data-go="need"><span class="t-title">Dark mode for the dashboard</span><span class="muted">High demand, low strategic value</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= UPDATES ================= -->
+  <section id="updates" class="view" aria-labelledby="h-updates">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Updates</span>
+        <h1 id="h-updates">Nothing goes out without your approval</h1>
+        <p class="lede">AI drafts an update on every status change. Edit it, then send.</p>
+      </div>
+    </div>
+
+    <div class="grid split">
+      <div class="card" id="draft-card">
+        <div class="section-head">
+          <span class="ai-tag">Drafted update</span>
+          <span class="muted">Use product data outside the platform · Under Review → <b class="strong">Planned</b></span>
+        </div>
+        <label class="field">Subject<input type="text" value="Planned: CSV export for every report"></label>
+        <label class="field">Message
+          <textarea style="min-height:150px">Thanks to everyone who explained how they use this data. Most of you reconcile reports in spreadsheets every week, so we're shipping CSV export for all dashboard reports first, then a Google Sheets connection. Target: next quarter.</textarea>
+        </label>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="approve-send">Approve &amp; send</button>
+          <button class="btn btn-ghost" data-toast="Draft regenerated from the latest rationale">Regenerate</button>
+        </div>
+        <p class="resolved hidden" id="sent-note" style="margin-top:.8rem"><span class="done-mark">Sent Oct 2. Customers now see it on the Customer Need page.</span></p>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:.6rem">Who receives it</h3>
+        <dl class="sig">
+          <dt>Requesters &amp; supporters</dt><dd>52</dd>
+          <dt>Engineers on affected clients</dt><dd>4</dd>
+        </dl>
+        <p class="muted" style="margin-top:.9rem">Customers see the public rationale and this message, never scores, contract values or internal notes.</p>
+        <h3 style="margin:1.4rem 0 .6rem">Recently sent</h3>
+        <ol class="timeline">
+          <li class="done"><span class="strong">SSO is in development: SAML first</span><br><span class="when">Sign in with company identity · Sep 20</span></li>
+          <li class="done"><span class="strong">Not planned: dark mode</span><br><span class="when">Dark mode for the dashboard · Sep 12</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<script src="app.js"></script>
+<script>
+  document.getElementById("save-decision").addEventListener("click", () => {
+    const r = document.getElementById("rationale");
+    const err = document.getElementById("rationale-err");
+    const empty = !r.value.trim();
+    err.classList.toggle("hidden", !empty);
+    r.setAttribute("aria-invalid", String(empty));
+    if (empty) { r.focus(); return; }
+    const status = document.getElementById("need-status");
+    status.className = "chip st-planned";
+    status.textContent = "Planned";
+    document.getElementById("need-timeline").insertAdjacentHTML("beforeend",
+      '<li class="now"><span class="strong">Decision: Planned · P1</span> <span class="when">· today</span><br><span class="muted">' +
+      r.value.replace(/</g, "&lt;") + '</span></li>');
+    toast("Decision saved. AI drafted an update for your approval");
+    setTimeout(() => showView("updates"), 900);
+  });
+
+  document.getElementById("rationale").addEventListener("input", (e) => {
+    if (e.target.value.trim()) {
+      document.getElementById("rationale-err").classList.add("hidden");
+      e.target.setAttribute("aria-invalid", "false");
+    }
+  });
+
+  document.getElementById("approve-send").addEventListener("click", (e) => {
+    e.target.disabled = true;
+    e.target.textContent = "Sent";
+    document.getElementById("sent-note").classList.remove("hidden");
+    document.getElementById("updates-count").classList.add("hidden");
+    toast("Update sent to 52 supporters and 4 engineers");
+  });
+</script>
+</body>
+</html>

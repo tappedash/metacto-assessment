@@ -1,0 +1,14 @@
+{
+ "title": "Refine Needs Hub prototypes with ui-ux-pro-max + 3-Click rule",
+ "slug": "prototype-3click-refine",
+ "mode": "workflow",
+ "status": "done",
+ "packets": {
+  "01-audit": "done",
+  "02-shared": "done",
+  "03-pages": "done",
+  "04-verify": "done"
+ },
+ "agents": [],
+ "no_delegation_reason": "coupled shared files"
+}

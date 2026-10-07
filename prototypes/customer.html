@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Needs Hub — Client Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html"><span class="dot"></span>Needs Hub</a>
+  <nav class="nav" aria-label="Client portal">
+    <button data-view="share" aria-current="page"><span class="ico i-message" aria-hidden="true"></span><span class="label">Share Feedback</span></button>
+    <button data-view="discover"><span class="ico i-compass" aria-hidden="true"></span><span class="label">Discover</span></button>
+    <button data-view="activity"><span class="ico i-clock" aria-hidden="true"></span><span class="label">My Activity</span></button>
+  </nav>
+  <div class="user">
+    <span class="avatar" aria-hidden="true">LM</span>
+    <div class="user-meta"><b>Lena Meyer</b><span>Client · Northwind Logistics</span></div>
+  </div>
+</aside>
+
+<main id="main" tabindex="-1">
+<div class="page narrow">
+
+  <!-- ================= SHARE FEEDBACK (2 clicks: Find → Support) ================= -->
+  <section id="share" class="view active" aria-labelledby="h-share">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Share feedback</span>
+        <h1 id="h-share">What's slowing you down?</h1>
+        <p class="lede">Describe it in your own words. If others raised the same problem, your support adds weight instead of starting from zero.</p>
+      </div>
+    </div>
+
+    <div class="card" data-flow="share">
+      <ol class="steps" aria-label="Progress">
+        <li aria-current="step">Describe</li><li>Match</li><li>Done</li>
+      </ol>
+
+      <div data-step="1">
+        <label class="field">What do you need? <span class="req" aria-hidden="true">*</span>
+          <input type="text" value="Export dashboard to Excel" required aria-required="true">
+        </label>
+        <div class="chat" aria-live="polite">
+          <div class="bubble ai">
+            <span class="ai-tag">Quick question</span>
+            What will you do with the report once it's exported, and how do you handle it today?
+          </div>
+        </div>
+        <label class="field" style="margin-top:.75rem">Your answer <span class="hint">(helps us find the right need)</span>
+          <textarea>Our finance team reconciles shipping costs every Monday in their own spreadsheets. Today I copy numbers by hand, which takes about 2 hours.</textarea>
+        </label>
+        <button class="btn btn-primary" data-goto-step="share:2">Find similar needs</button>
+      </div>
+
+      <div data-step="2" class="hidden">
+        <h2 style="margin-bottom:1rem">Is this your need?</h2>
+        <div class="ai-panel">
+          <div class="item-head" style="justify-content:space-between">
+            <span class="ai-tag">AI Match</span>
+            <span class="chip st-review">Under Review</span>
+          </div>
+          <h3 style="font-size:1.25rem">Use product data outside the platform</h3>
+          <p style="margin-top:.35rem">Teams need to move reports and shipment data into their own tools (Excel, CSV, Google Sheets) to reconcile, share and analyse it.</p>
+          <p class="strong" style="margin-top:.7rem">51 people have described a similar problem.</p>
+          <div class="based-on">
+            <span><b>Why we think it matches:</b> you want to reconcile shipping data in your own spreadsheets, the same goal others describe.</span>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:1.1rem">
+          <button class="btn btn-primary" data-goto-step="share:3">Yes, support this need</button>
+          <button class="btn btn-ghost" data-goto-step="share:4">No, mine is different</button>
+          <button class="btn-link" data-goto-step="share:1">Edit my request</button>
+        </div>
+      </div>
+
+      <div data-step="3" class="hidden stack" role="status">
+        <h2>You're supporter #52</h2>
+        <p>Your request and your answer were added as evidence for the product team. We'll email you when the status changes.</p>
+        <div class="btn-row"><button class="btn btn-dark" data-go="need" data-need="export">Follow this need</button><button class="btn btn-ghost" data-goto-step="share:1">Share something else</button></div>
+      </div>
+
+      <div data-step="4" class="hidden stack" role="status">
+        <h2>Thanks, we've logged it as a new request</h2>
+        <p>A product manager will review it and group it with the right need. You'll be notified when its status changes.</p>
+        <div class="btn-row"><button class="btn btn-dark" data-go="activity">View my activity</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DISCOVER ================= -->
+  <section id="discover" class="view" aria-labelledby="h-discover">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Discover</span>
+        <h1 id="h-discover">Needs others have raised</h1>
+        <p class="lede">Support an existing need instead of starting a new one.</p>
+      </div>
+    </div>
+    <label class="field"><span class="sr-only">Search needs</span><input type="search" placeholder="Search needs…"></label>
+    <div class="card flush list">
+      <div class="item item-body">
+        <div>
+          <button class="row-link" data-go="need" data-need="export">Use product data outside the platform</button>
+          <p class="muted">Move reports and shipment data into your own tools · 52 supporters · you support this</p>
+        </div>
+        <span class="chip st-planned">Planned</span>
+      </div>
+      <div class="item item-body">
+        <div>
+          <button class="row-link" data-go="need" data-need="sso">Sign in with company identity</button>
+          <p class="muted">Use corporate SSO so IT can manage access centrally · 38 supporters</p>
+        </div>
+        <span class="chip st-dev">In Development</span>
+      </div>
+      <div class="item item-body">
+        <div>
+          <button class="row-link" data-go="need" data-need="delays">Know about delays before customers do</button>
+          <p class="muted">Get alerted when shipments slip past their SLA · 17 supporters</p>
+        </div>
+        <span class="chip st-review">Under Review</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MY ACTIVITY ================= -->
+  <section id="activity" class="view" aria-labelledby="h-activity">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">My activity</span>
+        <h1 id="h-activity">Your requests and supported needs</h1>
+      </div>
+    </div>
+    <div class="card flush list">
+      <div class="item item-body">
+        <div>
+          <p class="strong">"Export dashboard to Excel"</p>
+          <p class="muted">Supporting <button class="btn-link" data-go="need" data-need="export">Use product data outside the platform</button></p>
+        </div>
+        <span class="chip st-planned">Planned</span>
+      </div>
+      <div class="item item-body">
+        <div>
+          <p class="strong">"Bulk edit carrier rates"</p>
+          <p class="muted">New request · waiting for product review</p>
+        </div>
+        <span class="chip st-review">Under Review</span>
+      </div>
+      <div class="item item-body">
+        <div>
+          <p class="strong">"Dark mode for the dashboard"</p>
+          <p class="muted">Not planned for now: we're focusing on reporting and security needs that block daily work.</p>
+        </div>
+        <span class="chip st-notplanned">Not Planned</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CUSTOMER NEED (public fields only) ================= -->
+  <section id="need" class="view" data-nav="activity" aria-labelledby="h-need">
+    <button class="back" data-back="activity"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">My Activity</span></button>
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Customer Need</span>
+        <h1 id="h-need" data-f="title">Use product data outside the platform</h1>
+        <p class="lede" data-f="statement">Teams need to move reports and shipment data into their own tools to reconcile, share and analyse it.</p>
+      </div>
+      <span class="chip st-planned" data-f="status">Planned</span>
+    </div>
+
+    <div class="notice">
+      <span><b class="strong" data-f="count">52</b> supporters</span>
+      <span class="muted" data-f="mine">· you support this need</span>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" id="support-btn" aria-pressed="true">Supporting</button>
+    </div>
+
+    <div class="grid split">
+      <div class="card stack" data-f="update">
+        <span class="eyebrow">Latest update · Oct 2</span>
+        <h2>We're starting with CSV export for every report</h2>
+        <p>Thanks to everyone who explained how they use this data. Most of you reconcile reports in spreadsheets every week, so we're shipping CSV export for all dashboard reports first, then a Google Sheets connection. Target: next quarter.</p>
+        <p class="muted"><b class="strong">Why we decided this:</b> it blocks weekly finance and operations workflows for many teams, and CSV export is a small first step that removes manual copy-paste.</p>
+      </div>
+      <div class="card">
+        <h2 style="font-size:1.05rem;margin-bottom:.9rem">Progress</h2>
+        <ol class="timeline" data-f="timeline"></ol>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<script src="app.js"></script>
+<script>
+  // Public Customer Need data (no internal fields: no accounts, contract value, scores or notes).
+  const NEEDS = {
+    export: { title: "Use product data outside the platform", statement: "Teams need to move reports and shipment data into their own tools to reconcile, share and analyse it.",
+              status: ["st-planned", "Planned"], count: 52, mine: true, hasUpdate: true, stage: 2, when: ["Aug 28", "Oct 2 · CSV export first"] },
+    sso:    { title: "Sign in with company identity", statement: "IT teams need to manage access with their corporate identity provider instead of separate passwords.",
+              status: ["st-dev", "In Development"], count: 38, mine: false, hasUpdate: false, stage: 3, when: ["Jul 14", "Aug 30", "Sep 20 · SAML first"] },
+    delays: { title: "Know about delays before customers do", statement: "Operations teams need early warning when shipments slip past their SLA so they can act before customers complain.",
+              status: ["st-review", "Under Review"], count: 17, mine: false, hasUpdate: false, stage: 1, when: ["Sep 3"] },
+  };
+  const STAGES = ["Under Review", "Planned", "In Development", "Released"];
+  let current = "export";
+  const f = (k) => document.querySelector(`#need [data-f="${k}"]`);
+
+  function renderNeed(id) {
+    current = id;
+    const n = NEEDS[id];
+    f("title").textContent = n.title;
+    f("statement").textContent = n.statement;
+    f("status").className = "chip " + n.status[0];
+    f("status").textContent = n.status[1];
+    f("update").classList.toggle("hidden", !n.hasUpdate);
+    f("timeline").innerHTML = STAGES.map((s, i) => {
+      const cls = i + 1 < n.stage ? "done" : i + 1 === n.stage ? "now" : "";
+      const when = n.when[i] ? `<br><span class="when">${n.when[i]}</span>` : "";
+      return `<li class="${cls}"><span class="strong">${s}</span>${i + 1 === n.stage ? ' <span class="sr-only">(current)</span>' : ""}${when}</li>`;
+    }).join("");
+    renderSupport();
+  }
+
+  function renderSupport() {
+    const n = NEEDS[current];
+    const btn = document.getElementById("support-btn");
+    f("count").textContent = n.count;
+    f("mine").textContent = n.mine ? "· you support this need" : "";
+    btn.setAttribute("aria-pressed", String(n.mine));
+    btn.textContent = n.mine ? "Supporting" : "Support this need";
+    btn.className = "btn btn-sm " + (n.mine ? "btn-ghost" : "btn-primary");
+  }
+
+  document.getElementById("support-btn").addEventListener("click", () => {
+    const n = NEEDS[current];
+    n.mine = !n.mine;
+    n.count += n.mine ? 1 : -1;
+    renderSupport();
+    toast(n.mine ? "You're supporting this need. We'll email you updates." : "Support removed");
+  });
+
+  // Runs before app.js switches the view, so the page renders the selected Need.
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("[data-need]");
+    if (link) renderNeed(link.dataset.need);
+  }, true);
+
+  renderNeed("export");
+</script>
+</body>
+</html>

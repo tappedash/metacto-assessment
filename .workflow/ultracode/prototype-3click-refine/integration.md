@@ -1,0 +1,4 @@
+# Integration
+- 02-shared: styles.css rewritten (palette-only tokens, SVG mask icon set, focus/skip link, shape+text status chips, reduced motion, tabular nums, 44px mobile inputs, 20px checkboxes); app.js rewritten (hash routing + pushState/popstate, labelled back links, triage resolve/undo + live count + empty state, autosave, 3.5s aria-live toast).
+- 03-pages: all five pages get skip link, `main#main`, icon+label nav. PM: triage items resolve with Undo, suggested Needs linked, empty state, one orange CTA per view, required rationale with inline error. Client: AI follow-up inline (2 clicks to support), data-driven public Need page with Support toggle. Engineer: clarify merged into request (3 clicks), board heading levels. Admin: staffing autosave.
+- Mid-run constraint from user: only metacto.com palette colours → all non-palette tints removed; text on tints switched to ink for contrast.

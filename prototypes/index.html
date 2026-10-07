@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Needs Hub — Prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html"><span class="dot"></span>Needs Hub</a>
+  <nav class="nav" aria-label="Prototypes">
+    <a href="index.html" aria-current="page"><span class="ico i-home" aria-hidden="true"></span><span class="label">Overview</span></a>
+    <a href="customer.html"><span class="ico i-message" aria-hidden="true"></span><span class="label">Client user</span></a>
+    <a href="engineer.html"><span class="ico i-tasks" aria-hidden="true"></span><span class="label">Engineer</span></a>
+    <a href="pm.html"><span class="ico i-layers" aria-hidden="true"></span><span class="label">Product Manager</span></a>
+    <a href="admin.html"><span class="ico i-building" aria-hidden="true"></span><span class="label">Workspace Admin</span></a>
+  </nav>
+  <div class="user">
+    <span class="avatar" aria-hidden="true">v0</span>
+    <div class="user-meta"><b>MVP prototypes</b><span>Spec v0.1</span></div>
+  </div>
+</aside>
+
+<main id="main" tabindex="-1">
+<div class="page">
+  <div class="card dark" style="padding:2.5rem 2.25rem">
+    <span class="eyebrow" style="color:var(--orange)">AI-first product feedback</span>
+    <h1 class="display" style="max-width:17ch">From scattered requests to clear decisions.</h1>
+    <p style="margin-top:1rem;max-width:62ch">Feature Request → AI understanding → Customer Need → Human product decision → Stakeholder communication.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h2>Walk the user story</h2><span class="muted">Each step opens the screen where it happens</span></div>
+    <div class="card flush list">
+      <div class="item item-body"><div><span class="strong">1 · Client shares "Export dashboard to Excel"</span><p class="muted">AI asks why, finds "Use product data outside the platform", client supports it.</p></div><a class="btn btn-ghost btn-sm" href="customer.html#share">Client · Share Feedback</a></div>
+      <div class="item item-body"><div><span class="strong">2 · PM sees only uncertain cases</span><p class="muted">The confirmed match was attached automatically; Triage holds the exceptions.</p></div><a class="btn btn-ghost btn-sm" href="pm.html#triage">PM · Triage</a></div>
+      <div class="item item-body"><div><span class="strong">3 · PM compares Demand and Strategic Value</span><p class="muted">Dark mode: very high demand, low value. SSO: medium demand, very high value.</p></div><a class="btn btn-ghost btn-sm" href="pm.html#needs">PM · Customer Needs</a></div>
+      <div class="item item-body"><div><span class="strong">4 · PM opens the Customer Need, reviews the AI Brief and rubric, decides</span><p class="muted">Sets final priority and a required rationale.</p></div><a class="btn btn-ghost btn-sm" href="pm.html#need">PM · Customer Need</a></div>
+      <div class="item item-body"><div><span class="strong">5 · AI drafts the update, PM approves it</span><p class="muted">Nothing reaches customers without approval.</p></div><a class="btn btn-ghost btn-sm" href="pm.html#updates">PM · Updates</a></div>
+      <div class="item item-body"><div><span class="strong">6 · Client sees the progress update</span><p class="muted">Status, public rationale and the approved update. No internal data.</p></div><a class="btn btn-ghost btn-sm" href="customer.html#need">Client · Customer Need</a></div>
+    </div>
+  </div>
+
+  <p class="muted" style="margin-top:1.5rem">Static prototypes with sample data. Spec: <code>product_specs/mvp_spec_20261007-051740.md</code></p>
+</div>
+</main>
+</body>
+</html>

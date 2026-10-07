@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Needs Hub — Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html"><span class="dot"></span>Needs Hub</a>
+  <nav class="nav" aria-label="Engineer">
+    <button data-view="tickets" aria-current="page"><span class="ico i-tasks" aria-hidden="true"></span><span class="label">My Tickets</span></button>
+    <button data-view="clients"><span class="ico i-building" aria-hidden="true"></span><span class="label">My Clients</span></button>
+    <button data-view="log"><span class="ico i-pen" aria-hidden="true"></span><span class="label">Log Client Feedback</span></button>
+    <button data-view="updates"><span class="ico i-send" aria-hidden="true"></span><span class="label">Approved Updates</span></button>
+  </nav>
+  <div class="user">
+    <span class="avatar" aria-hidden="true">RP</span>
+    <div class="user-meta"><b>Ravi Patel</b><span>Engineer</span></div>
+  </div>
+</aside>
+
+<main id="main" tabindex="-1">
+<div class="page">
+  <p class="notice lock">Staffed on <b class="strong">Contoso Health</b> and <b class="strong">Northwind Logistics</b>. You see client details and evidence only for these engagements; other clients appear as counts.</p>
+
+  <!-- ================= MY TICKETS ================= -->
+  <section id="tickets" class="view active" aria-labelledby="h-tickets">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">My tickets</span>
+        <h1 id="h-tickets">Assigned to you</h1>
+        <p class="lede">Move delivery status as work progresses. Each move drafts a customer update for the PM to approve.</p>
+      </div>
+    </div>
+    <div class="board three">
+      <div class="col"><div class="col-head"><h2>Planned</h2><span>1</span></div>
+        <div class="ticket mine">
+          <h3 class="t-title"><button class="row-link" data-go="need">Use product data outside the platform</button></h3>
+          <span class="muted">P1 · CSV export first</span>
+          <span class="meta"><span class="chip">Northwind</span><span class="chip">Contoso</span><span class="chip">+6 accounts</span></span>
+          <div class="btn-row" style="margin-top:.6rem"><button class="btn btn-dark btn-sm" data-toast="Moved to In Development · update drafted for the PM">Start development</button></div>
+        </div>
+      </div>
+      <div class="col"><div class="col-head"><h2>In Development</h2><span>1</span></div>
+        <div class="ticket mine">
+          <h3 class="t-title"><button class="row-link" data-go="need">Sign in with company identity</button></h3>
+          <span class="muted">P1 · effort L · SAML first</span>
+          <span class="meta"><span class="chip">Contoso</span><span class="chip">+5 accounts</span></span>
+          <div class="btn-row" style="margin-top:.6rem"><button class="btn btn-dark btn-sm" data-toast="Marked Released · update drafted for the PM">Mark released</button></div>
+        </div>
+      </div>
+      <div class="col"><div class="col-head"><h2>Released</h2><span>1</span></div>
+        <div class="ticket mine">
+          <h3 class="t-title"><button class="row-link" data-go="need">Audit log export</button></h3>
+          <span class="muted">Released Sep 30</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MY CLIENTS ================= -->
+  <section id="clients" class="view" aria-labelledby="h-clients">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">My clients</span>
+        <h1 id="h-clients">Customer Needs affecting your engagements</h1>
+      </div>
+    </div>
+    <div class="grid g2">
+      <div class="card flush">
+        <div class="section-head" style="padding:1rem 1.25rem 0"><h2>Contoso Health</h2><span class="chip">Enterprise · Healthcare</span></div>
+        <div class="list">
+          <div class="item item-body"><div><button class="row-link" data-go="need">Sign in with company identity</button><p class="muted">3 Feature Requests from this client</p></div><span class="chip st-dev">In Development</span></div>
+          <div class="item item-body"><div><button class="row-link" data-go="need">Use product data outside the platform</button><p class="muted">2 Feature Requests from this client</p></div><span class="chip st-planned">Planned</span></div>
+        </div>
+      </div>
+      <div class="card flush">
+        <div class="section-head" style="padding:1rem 1.25rem 0"><h2>Northwind Logistics</h2><span class="chip">Mid-market · Logistics</span></div>
+        <div class="list">
+          <div class="item item-body"><div><button class="row-link" data-go="need">Use product data outside the platform</button><p class="muted">4 Feature Requests from this client</p></div><span class="chip st-planned">Planned</span></div>
+          <div class="item item-body"><div><p class="strong">Bulk edit carrier rates</p><p class="muted">1 Feature Request · in PM triage</p></div><span class="chip st-review">Under Review</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LOG CLIENT FEEDBACK ================= -->
+  <section id="log" class="view narrow" aria-labelledby="h-log">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Log client feedback</span>
+        <h1 id="h-log">Capture the client's problem, not the fix</h1>
+        <p class="lede">Logged on behalf of the client: it counts toward the client's demand, not yours.</p>
+      </div>
+    </div>
+
+    <div class="card" data-flow="log">
+      <ol class="steps" aria-label="Progress">
+        <li aria-current="step">Request</li><li>Confirm match</li><li>Done</li>
+      </ol>
+
+      <div data-step="1">
+        <div class="grid g2">
+          <label class="field">Client <span class="req" aria-hidden="true">*</span>
+            <select required aria-required="true"><option>Contoso Health</option><option>Northwind Logistics</option></select>
+          </label>
+          <label class="field">Client stakeholder <span class="hint">(optional)</span>
+            <input type="text" value="Dana Ruiz, Compliance Lead">
+          </label>
+        </div>
+        <label class="field">What the client asked for <span class="req" aria-hidden="true">*</span>
+          <input type="text" value="Download the monthly shipment report as CSV" required aria-required="true">
+        </label>
+        <div class="chat" aria-live="polite">
+          <div class="bubble ai"><span class="ai-tag">Quick question</span>This describes a solution. What is the client trying to get done, and what do they do today?</div>
+        </div>
+        <div class="grid g2" style="margin-top:.75rem">
+          <label class="field">Client's goal
+            <textarea>Their compliance team audits every shipment monthly in Excel. Today they ask us to pull the data manually.</textarea>
+          </label>
+          <label class="field">Severity for the client
+            <select><option>Blocks a workflow</option><option>Costly workaround</option><option>Nice to have</option></select>
+          </label>
+        </div>
+        <button class="btn btn-primary" data-goto-step="log:2">Find matching Customer Need</button>
+      </div>
+
+      <div data-step="2" class="hidden">
+        <h2 style="margin-bottom:1rem">Does this represent the client's problem?</h2>
+        <div class="ai-panel">
+          <div class="item-head" style="justify-content:space-between">
+            <span class="ai-tag">AI Match · 91% confidence</span>
+            <span class="chip st-planned">Planned</span>
+          </div>
+          <h3 style="font-size:1.2rem">Use product data outside the platform</h3>
+          <p style="margin-top:.35rem">Operations and finance teams need to use report data in their own tools because they reconcile and audit it outside the platform.</p>
+          <div class="based-on"><span><b>Why it matches:</b> the client audits shipment data in Excel, the same job as 24 existing Feature Requests across 8 accounts.</span></div>
+        </div>
+        <div class="btn-row" style="margin-top:1.1rem">
+          <button class="btn btn-primary" data-goto-step="log:3">Yes, attach this feedback</button>
+          <button class="btn btn-ghost" data-goto-step="log:4">No, this is different</button>
+          <button class="btn-link" data-goto-step="log:1">Edit request</button>
+        </div>
+      </div>
+
+      <div data-step="3" class="hidden stack" role="status">
+        <h2>Attached as evidence for Contoso Health</h2>
+        <p>You confirmed a strong match, so it went straight to the Customer Need. No PM triage needed.</p>
+        <div class="btn-row"><button class="btn btn-dark" data-go="need">Open Customer Need</button><button class="btn btn-ghost" data-goto-step="log:1">Log more feedback</button></div>
+      </div>
+
+      <div data-step="4" class="hidden stack" role="status">
+        <h2>Sent to PM Triage</h2>
+        <p>The PM will decide whether it's a new Customer Need or belongs to an existing one. You'll see it under My Clients.</p>
+        <div class="btn-row"><button class="btn btn-dark" data-go="clients">Go to My Clients</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CUSTOMER NEED + TECH NOTES ================= -->
+  <section id="need" class="view" data-nav="tickets" aria-labelledby="h-need">
+    <button class="back" data-back="tickets"><span class="ico i-chevron-left" aria-hidden="true"></span><span class="back-label">Back</span></button>
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Customer Need</span>
+        <h1 id="h-need">Use product data outside the platform</h1>
+        <p class="lede">Operations and finance teams need to use shipment and report data in their own tools because they reconcile weekly outside the platform.</p>
+      </div>
+      <span class="chip st-planned">Planned · P1</span>
+    </div>
+
+    <div class="grid split">
+      <div>
+        <div class="section-head"><h2>Evidence you can see</h2><span class="muted">6 of 24 Feature Requests</span></div>
+        <div class="card flush list">
+          <div class="item"><p class="muted">Northwind Logistics · client</p><p class="quote">"Export dashboard to Excel." — Finance reconciles shipping costs every Monday.</p></div>
+          <div class="item"><p class="muted">Contoso Health · logged by you</p><p class="quote">"Download the monthly shipment report as CSV." — Compliance audits every shipment in Excel.</p></div>
+          <div class="item"><button class="btn-link" data-toast="Showing all 6 Feature Requests from your clients">Show 4 more from your clients</button></div>
+          <div class="item"><p class="muted">+18 Feature Requests from 6 other accounts · details hidden (not on your engagements)</p></div>
+        </div>
+        <div class="section">
+          <label class="field" for="comment">Comment for the PM</label>
+          <textarea id="comment" placeholder="Add context the PM should know…"></textarea>
+          <div class="btn-row" style="margin-top:.6rem">
+            <button class="btn btn-ghost btn-sm" data-toast="Comment added">Comment</button>
+            <button class="btn btn-ghost btn-sm" data-toast="Flag sent to PM Triage">Flag: a request belongs elsewhere</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:1rem">Technical notes</h2>
+        <label class="field">Effort estimate
+          <select><option>S</option><option selected>M</option><option>L</option><option>XL</option></select>
+        </label>
+        <label class="field">Feasibility
+          <textarea>CSV export reuses the existing report query layer. A BI connector needs an auth model and rate limits.</textarea>
+        </label>
+        <label class="field">Dependencies
+          <input type="text" value="Report query API v2">
+        </label>
+        <button class="btn btn-primary" data-toast="Technical notes saved · the PM sets final effort">Save notes</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= APPROVED UPDATES ================= -->
+  <section id="updates" class="view" aria-labelledby="h-updates">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Approved updates</span>
+        <h1 id="h-updates">Share what's official</h1>
+        <p class="lede">Forward PM-approved updates to your client contacts. Don't make roadmap promises outside these.</p>
+      </div>
+    </div>
+    <div class="card flush list">
+      <div class="item item-body">
+        <div><span class="chip st-planned">Planned</span><h2 style="margin-top:.4rem;font:600 .98rem var(--font-sans)">Planned: CSV export for every report</h2><p class="muted">Use product data outside the platform · approved by Sam Kim · Oct 2 · Northwind, Contoso</p></div>
+        <div class="btn-row"><button class="btn btn-ghost btn-sm" data-toast="Link copied">Copy link</button><button class="btn btn-dark btn-sm" data-toast="Forwarded to client contacts">Forward</button></div>
+      </div>
+      <div class="item item-body">
+        <div><span class="chip st-dev">In Development</span><h2 style="margin-top:.4rem;font:600 .98rem var(--font-sans)">SSO is in development: SAML first</h2><p class="muted">Sign in with company identity · approved by Sam Kim · Sep 20 · Contoso</p></div>
+        <div class="btn-row"><button class="btn btn-ghost btn-sm" data-toast="Link copied">Copy link</button><button class="btn btn-dark btn-sm" data-toast="Forwarded to client contacts">Forward</button></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

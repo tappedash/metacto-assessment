@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Needs Hub — Workspace Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<aside class="sidebar">
+  <a class="brand" href="index.html"><span class="dot"></span>Needs Hub</a>
+  <nav class="nav" aria-label="Workspace Admin">
+    <button data-view="clients" aria-current="page"><span class="ico i-building" aria-hidden="true"></span><span class="label">Clients</span></button>
+    <button data-view="staffing"><span class="ico i-users" aria-hidden="true"></span><span class="label">Staffing</span></button>
+    <button data-view="users"><span class="ico i-user" aria-hidden="true"></span><span class="label">Users</span></button>
+    <button data-view="goals"><span class="ico i-target" aria-hidden="true"></span><span class="label">Strategic Goals</span></button>
+    <button data-view="needs"><span class="ico i-eye" aria-hidden="true"></span><span class="label">Customer Needs</span><span class="muted" style="color:inherit;font-size:11px">read-only</span></button>
+  </nav>
+  <div class="user">
+    <span class="avatar" aria-hidden="true">AL</span>
+    <div class="user-meta"><b>Alex Lee</b><span>Workspace Admin</span></div>
+  </div>
+</aside>
+
+<main id="main" tabindex="-1">
+<div class="page">
+
+  <!-- ================= CLIENTS ================= -->
+  <section id="clients" class="view active" aria-labelledby="h-clients">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Clients</span>
+        <h1 id="h-clients">Clients and their context</h1>
+        <p class="lede">Tier, segment and contract value feed Strategic Value. Contract value is visible to Admin and PM only.</p>
+      </div>
+      <div class="btn-row"><button class="btn btn-ghost" data-toast="CSV import started">Import CSV</button><button class="btn btn-primary" data-toast="Onboarding form opened">Onboard client</button></div>
+    </div>
+    <div class="card flush">
+      <table class="stack-sm">
+        <thead><tr><th scope="col">Client</th><th scope="col">Type</th><th scope="col">Tier · Segment</th><th scope="col">Contract value</th><th scope="col">Portal users</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          <tr><td class="primary"><b>Contoso Health</b></td><td data-label="Type">Client</td><td data-label="Tier · Segment">Enterprise · Healthcare</td><td data-label="Contract value">$1.2M</td><td data-label="Portal users">6</td><td data-label=""><button class="btn btn-ghost btn-sm" data-toast="Invite sent">Invite user</button></td></tr>
+          <tr><td class="primary"><b>Northwind Logistics</b></td><td data-label="Type">Client</td><td data-label="Tier · Segment">Mid-market · Logistics</td><td data-label="Contract value">$420K</td><td data-label="Portal users">3</td><td data-label=""><button class="btn btn-ghost btn-sm" data-toast="Invite sent">Invite user</button></td></tr>
+          <tr><td class="primary"><b>Fabrikam Retail</b></td><td data-label="Type">Client</td><td data-label="Tier · Segment">Enterprise · Retail</td><td data-label="Contract value">$980K</td><td data-label="Portal users">4</td><td data-label=""><button class="btn btn-ghost btn-sm" data-toast="Invite sent">Invite user</button></td></tr>
+          <tr><td class="primary"><b>Tailspin Air</b></td><td data-label="Type">Prospect</td><td data-label="Tier · Segment">Enterprise · Aviation</td><td data-label="Contract value"><span class="muted">pipeline</span></td><td data-label="Portal users"><span class="muted">no portal access</span></td><td data-label=""></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= STAFFING ================= -->
+  <section id="staffing" class="view" aria-labelledby="h-staffing">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Staffing</span>
+        <h1 id="h-staffing">Who works on which engagement</h1>
+        <p class="lede">Staffing decides what each engineer can see: client names and evidence only for their engagements. Changes save automatically.</p>
+      </div>
+    </div>
+    <div class="card flush">
+      <table class="stack-sm">
+        <thead><tr><th scope="col">Engineer</th><th scope="col">Contoso Health</th><th scope="col">Northwind Logistics</th><th scope="col">Fabrikam Retail</th><th scope="col">Tailspin Air <span class="hint">(presales)</span></th></tr></thead>
+        <tbody>
+          <tr><td class="primary"><b>Ravi Patel</b> <span class="muted">Backend</span></td>
+            <td data-label="Contoso Health"><input type="checkbox" checked aria-label="Ravi Patel on Contoso Health" data-autosave="Ravi Patel on Contoso Health"></td>
+            <td data-label="Northwind Logistics"><input type="checkbox" checked aria-label="Ravi Patel on Northwind Logistics" data-autosave="Ravi Patel on Northwind Logistics"></td>
+            <td data-label="Fabrikam Retail"><input type="checkbox" aria-label="Ravi Patel on Fabrikam Retail" data-autosave="Ravi Patel on Fabrikam Retail"></td>
+            <td data-label="Tailspin Air"><input type="checkbox" aria-label="Ravi Patel on Tailspin Air" data-autosave="Ravi Patel on Tailspin Air"></td></tr>
+          <tr><td class="primary"><b>Mia Chen</b> <span class="muted">Full-stack</span></td>
+            <td data-label="Contoso Health"><input type="checkbox" aria-label="Mia Chen on Contoso Health" data-autosave="Mia Chen on Contoso Health"></td>
+            <td data-label="Northwind Logistics"><input type="checkbox" checked aria-label="Mia Chen on Northwind Logistics" data-autosave="Mia Chen on Northwind Logistics"></td>
+            <td data-label="Fabrikam Retail"><input type="checkbox" checked aria-label="Mia Chen on Fabrikam Retail" data-autosave="Mia Chen on Fabrikam Retail"></td>
+            <td data-label="Tailspin Air"><input type="checkbox" aria-label="Mia Chen on Tailspin Air" data-autosave="Mia Chen on Tailspin Air"></td></tr>
+          <tr><td class="primary"><b>Jo Osei</b> <span class="muted">QA</span></td>
+            <td data-label="Contoso Health"><input type="checkbox" checked aria-label="Jo Osei on Contoso Health" data-autosave="Jo Osei on Contoso Health"></td>
+            <td data-label="Northwind Logistics"><input type="checkbox" aria-label="Jo Osei on Northwind Logistics" data-autosave="Jo Osei on Northwind Logistics"></td>
+            <td data-label="Fabrikam Retail"><input type="checkbox" aria-label="Jo Osei on Fabrikam Retail" data-autosave="Jo Osei on Fabrikam Retail"></td>
+            <td data-label="Tailspin Air"><input type="checkbox" aria-label="Jo Osei on Tailspin Air" data-autosave="Jo Osei on Tailspin Air"></td></tr>
+          <tr><td class="primary"><b>Ana Novak</b> <span class="muted">Solutions</span></td>
+            <td data-label="Contoso Health"><input type="checkbox" aria-label="Ana Novak on Contoso Health" data-autosave="Ana Novak on Contoso Health"></td>
+            <td data-label="Northwind Logistics"><input type="checkbox" aria-label="Ana Novak on Northwind Logistics" data-autosave="Ana Novak on Northwind Logistics"></td>
+            <td data-label="Fabrikam Retail"><input type="checkbox" aria-label="Ana Novak on Fabrikam Retail" data-autosave="Ana Novak on Fabrikam Retail"></td>
+            <td data-label="Tailspin Air"><input type="checkbox" checked aria-label="Ana Novak on Tailspin Air" data-autosave="Ana Novak on Tailspin Air"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= USERS ================= -->
+  <section id="users" class="view" aria-labelledby="h-users">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Users</span>
+        <h1 id="h-users">People and roles</h1>
+        <p class="lede">Admin · Product Manager · Engineer · Client user. Roles decide what each person can see and do.</p>
+      </div>
+      <button class="btn btn-primary" data-toast="Invite form opened">Invite user</button>
+    </div>
+    <div class="card flush">
+      <table class="stack-sm">
+        <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Scope</th></tr></thead>
+        <tbody>
+          <tr><td class="primary"><b>Sam Kim</b></td><td data-label="Role"><select aria-label="Role for Sam Kim" style="margin:0;width:auto"><option>Product Manager</option><option>Engineer</option><option>Workspace Admin</option></select></td><td data-label="Scope">All Customer Needs</td></tr>
+          <tr><td class="primary"><b>Ravi Patel</b></td><td data-label="Role"><select aria-label="Role for Ravi Patel" style="margin:0;width:auto"><option>Engineer</option><option>Product Manager</option><option>Workspace Admin</option></select></td><td data-label="Scope">Contoso, Northwind (via staffing)</td></tr>
+          <tr><td class="primary"><b>Lena Meyer</b></td><td data-label="Role">Client user</td><td data-label="Scope">Northwind Logistics</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= STRATEGIC GOALS ================= -->
+  <section id="goals" class="view narrow" aria-labelledby="h-goals">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Strategic goals</span>
+        <h1 id="h-goals">What "strategic" means this year</h1>
+        <p class="lede">Set 3–5 goals. AI explains each Customer Need's fit against them, so Strategic Value stays independent from popularity.</p>
+      </div>
+    </div>
+    <div class="card flush list">
+      <div class="item item-body"><div><span class="eyebrow" style="margin:0">G1</span><p class="strong">Reduce delivery effort on legacy migrations</p></div><button class="btn btn-ghost btn-sm" data-toast="Editing goal G1">Edit</button></div>
+      <div class="item item-body"><div><span class="eyebrow" style="margin:0">G2</span><p class="strong">Expand in enterprise logistics accounts</p></div><button class="btn btn-ghost btn-sm" data-toast="Editing goal G2">Edit</button></div>
+      <div class="item item-body"><div><span class="eyebrow" style="margin:0">G3</span><p class="strong">Meet enterprise security requirements</p></div><button class="btn btn-ghost btn-sm" data-toast="Editing goal G3">Edit</button></div>
+      <div class="item"><button class="btn btn-primary btn-sm" data-toast="Goal added">Add goal</button> <span class="muted">3 of 5 used</span></div>
+    </div>
+  </section>
+
+  <!-- ================= CUSTOMER NEEDS (read-only) ================= -->
+  <section id="needs" class="view" aria-labelledby="h-needs">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Customer Needs · read-only</span>
+        <h1 id="h-needs">What clients need, and what Product decided</h1>
+        <p class="lede">Triage, prioritization and roadmap decisions belong to the Product Manager.</p>
+      </div>
+    </div>
+    <div class="card flush">
+      <table class="stack-sm">
+        <thead><tr><th scope="col">Customer Need</th><th scope="col" class="group-demand">Demand</th><th scope="col" class="group-strategic">Strategic Value</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Rationale</th></tr></thead>
+        <tbody>
+          <tr><td class="primary"><b>Use product data outside the platform</b><br><span class="muted">8 accounts · $2.4M</span></td><td data-label="Demand">High</td><td data-label="Strategic Value">High</td><td data-label="Priority">P1</td><td data-label="Status"><span class="chip st-planned">Planned</span></td><td data-label="Rationale" class="muted">Blocks weekly finance workflows; CSV export first.</td></tr>
+          <tr><td class="primary"><b>Sign in with company identity</b><br><span class="muted">6 accounts · $3.1M</span></td><td data-label="Demand">Medium</td><td data-label="Strategic Value">Very high</td><td data-label="Priority">P1</td><td data-label="Status"><span class="chip st-dev">In Development</span></td><td data-label="Rationale" class="muted">Enterprise security requirement; renewal risk at 2 accounts.</td></tr>
+          <tr><td class="primary"><b>Dark mode for the dashboard</b><br><span class="muted">19 accounts · $0.8M</span></td><td data-label="Demand">Very high</td><td data-label="Strategic Value">Low</td><td data-label="Priority">—</td><td data-label="Status"><span class="chip st-notplanned">Not Planned</span></td><td data-label="Rationale" class="muted">Popular, but low fit with current goals.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
