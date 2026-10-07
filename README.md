@@ -6,7 +6,7 @@ AI-first Customer Needs platform for product teams in IT / consulting companies.
 
 Clients and engineers submit Feature Requests. AI matches each one to an existing Customer Need (the underlying product problem) while the user waits, so duplicates become evidence instead of noise. PMs compare Demand with Strategic Value, decide with AI-prefilled context, and approved updates flow back to customers.
 
-> **Status: local MVP, full workflow implemented.** All four roles (client, engineer, product manager, workspace admin) work end to end with the mock AI (no key) or OpenAI. Sign-in is a local demo picker, not real authentication.
+> **Status: local MVP, full workflow implemented.** All four roles (client, engineer, product manager, workspace admin) work end to end with the mock AI (no key) or OpenAI. Sign-in uses Better Auth (magic link by email, optional Google) with invitation-only onboarding.
 
 ## Quick start
 
@@ -31,11 +31,35 @@ make            # checks prerequisites, creates .env, installs deps, starts Dock
 | `make mail` | Open the Mailpit inbox |
 | `make down` / `make clean` | Stop containers / also delete the database volume and `.next` |
 
-`make` starts Docker Desktop on macOS if it isn't running, and picks the next free port if 3000 is taken. Without make, the same steps are: `cp .env.example .env && npm install && npm run setup && npm run dev`.
+`make` starts Docker Desktop on macOS if it isn't running, generates `BETTER_AUTH_SECRET` in `.env`, and picks the next free port if 3000 is taken (it then sets `BETTER_AUTH_URL` to that port for the run). Without make: `cp .env.example .env`, set `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), then `npm install && npm run setup && npm run dev`.
+
+## Sign in (local)
+
+Access is invitation-only. Sign in at http://localhost:3000/login with a seeded email and **Send magic link**; the email arrives in Mailpit (http://localhost:8025), and its link signs you in.
+
+| Role | Demo email |
+|---|---|
+| Client | `lena@northwind.example` (also `dana@contoso.example`, `omar@fabrikam.example`) |
+| Engineer | `ravi@needs-hub.local` (also `mia@`, `jo@`) |
+| Product Manager | `sam@needs-hub.local` |
+| Workspace Admin | `alex@needs-hub.local` |
+| Pending invitation | `maya@cedar.example`: the first sign-in creates her as a Cedar Clinics client from the invitation |
+
+Onboarding: the Admin invites email + role (+ client account) under **Users**; the invitee gets an email and, on first sign-in (magic link or Google with that email), is created with the invited role and account. Uninvited emails can't sign in. Roles and permissions are enforced by the app (`src/domain/session.ts`, `permissions.ts`), not by the auth library.
+
+### Google OAuth (optional)
+
+1. Google Cloud Console → APIs & Services → **OAuth consent screen**: External, add yourself as a test user.
+2. **Credentials → Create credentials → OAuth client ID** → Web application:
+   - Authorized JavaScript origin: `http://localhost:3000`
+   - Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+3. Put the client ID and secret in `.env` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, restart `make dev`. *Continue with Google* appears on the sign-in page.
+
+Google only signs in invited or existing emails; it links to the existing user with the same email. If the app runs on another port, add that port's origin and callback too.
 
 | URL | What |
 |---|---|
-| http://localhost:3000 | Demo sign-in: pick a seeded user to use the app as that role |
+| http://localhost:3000 | Sign in (magic link or Google), then your role's area |
 | http://localhost:3000/api/health | Readiness: database, pgvector, AI provider, SMTP |
 | http://localhost:8025 | Mailpit inbox (outbound email preview) |
 
@@ -57,7 +81,7 @@ npm run test:integration  # reseeds, then the full workflow end to end (needs np
 
 ## Walk through the workflow
 
-Sign in at http://localhost:3000 as each user in turn ("Switch user" sits at the bottom of the sidebar):
+Sign in with each demo email in turn (magic links arrive in Mailpit; *Sign out* is at the bottom of the sidebar):
 
 1. **Lena Meyer (client)** → Share Feedback: drop `docs/demo/weekly-report-process.pdf` (or `weekly-shipment-report.csv`), optionally add a line of text, and click *Continue*. AI shows "AI reviewed your attachment" and "AI understood" (goal, current workaround, pain); correct anything and click *Yes, find matching needs*. It suggests **Use product data outside the platform** ("Is this your need?"). Click *Yes, support this need*: your request and file are now evidence.
 2. **Sam Kim (PM)** → Triage holds only uncertain cases. Customer Needs shows Demand and Strategic Value separately (dark mode: very high demand, low strategic value; SSO: medium demand, very high strategic value). Open *Use product data outside the platform*: the AI Brief cites the evidence (R1, R2...), the rubric shows AI scores next to your final scores. Pick a priority, choose *Plan*, write a rationale and *Save decision*. AI drafts a customer update; edit it in Updates and *Approve & send*.
@@ -194,7 +218,7 @@ Demand comes from Feature Requests, supporters and accounts, never from ticket c
 
 ## Known limitations (MVP)
 
-- Sign-in is a local demo picker; there is no real authentication.
+- Authentication is local-MVP grade: magic links and Google via Better Auth with sessions in Postgres; no SSO/SAML, MFA or rate limiting.
 - AI runs inside requests (no worker): the PM waits a moment when a Need's evidence changed or a decision is saved. Emails are sent in the request with no retries.
 - Splitting a Customer Need is not implemented (merging is).
 - The mock AI matches with a small built-in vocabulary and reads files with simple rules; use `AI_PROVIDER=openai` for real semantic matching, better file understanding and screenshot reading.

@@ -118,6 +118,13 @@ Two separate layers that meet only through Ticket → Customer Need:
 - **Understanding:** on *Continue*, the description, details and file excerpts go to one structured AI task (summary, goal, workaround, impact, terms). The customer's corrections drive matching and become the evidence text.
 - **Assistant:** a server action builds a per-customer context (own requests, supported Needs, public Need fields, approved updates, own files, plus Needs related to the question by vector search) and asks a structured AI task for `{answer, links}`. Links outside that context are dropped. Nothing is persisted and nothing is submitted from the Assistant.
 
+## Authentication
+
+- **Better Auth** (`src/lib/auth.ts`) with sessions in Postgres (`auth_sessions`, `auth_accounts`, `auth_verifications`) via the Drizzle adapter. Better Auth's user model is the app's `users` table; `role` and `accountId` are server-owned fields.
+- **Sign-in:** magic link (sent through the same SMTP/Mailpit mailer) and optional Google OAuth (callback `/api/auth/callback/google`), linked to the existing user with the same email.
+- **Invitation-only onboarding:** the Admin creates an invitation (email, role, client account). Better Auth's user-create hook copies role and account from the pending invitation and rejects anyone else; magic links are only emailed to existing or invited addresses.
+- **Authorization stays in the app:** every page, server action and API route resolves the actor through `src/domain/session.ts` and applies the domain permission rules. Better Auth only answers "who is this?".
+
 ## Permissions
 
 Enforced server-side (`src/domain/permissions.ts`), never only in the UI:
