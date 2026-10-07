@@ -3,14 +3,16 @@
 | Field | Value |
 |---|---|
 | Scope | Local MVP: the simplest architecture that proves the end-to-end workflow |
-| Product spec | latest file in `product_specs/` (v0.4 adds attachments + client Assistant) |
+| Product spec | latest file in `product_specs/` (v0.6 adds customer delivery tracking and validation) |
 | AI provider | OpenAI (single vendor), with a deterministic mock for running without a key |
 
 ## Goals
 
 Prove this workflow on one developer machine:
 
-**Feature Request → AI understanding → Customer Need → PM decision → Delivery → Stakeholder update**
+**Feature Request → AI understanding → Customer Need → PM decision → Delivery → Customer tracking → Validation / rework → Stakeholder update**
+
+The full set of UX workflows by role is in `diagrams/platform_blueprint.excalidraw`.
 
 Keep: a Next.js modular monolith, PostgreSQL + pgvector, OpenAI for embeddings and language tasks, Drizzle migrations, seeded demo data, server-side role/staffing permissions, synchronous AI matching on submission, structured AI outputs, Mailpit for the update loop, mock AI mode.
 
@@ -83,6 +85,7 @@ Deliberately removed for now (see "Production path"): a separate worker process,
 | Refine the Need's problem statement | Inline, right after a request is attached to a Need. |
 | AI Brief + rubric prefill | **On demand** when the PM opens a Need whose evidence changed since the last generation. Cached on the Need with the evidence count and timestamp; a "Regenerate" button forces a refresh. |
 | Draft stakeholder update | When the PM saves a decision (loading state while it runs). |
+| Understand a rework request | Synchronously when the customer clicks *Continue* (and again on *Refine with AI*) in "Something isn't right": description + files → expected / what happens / impact. Nothing is saved until they confirm. |
 | Send emails | When the PM approves the update: one SMTP send per recipient to Mailpit; failures are listed to the PM, no retries. |
 
 AI outputs that the product shows as conclusions (AI Brief, rubric suggestions) store the request IDs they cite, so every conclusion stays traceable to raw customer evidence.
@@ -117,6 +120,12 @@ Two separate layers that meet only through Ticket → Customer Need:
 - **Files:** uploaded to `/api/attachments`, stored on local disk (`storage/uploads`, gitignored) for the MVP. Text is extracted (unpdf, mammoth, exceljs); screenshots are passed as images to the OpenAI provider. AI writes a one-line "AI reviewed your attachment" summary at upload. Downloads are served with a sandboxing Content-Security-Policy.
 - **Understanding:** on *Continue*, the description, details and file excerpts go to one structured AI task (summary, goal, workaround, impact, terms). The customer's corrections drive matching and become the evidence text.
 - **Assistant:** a server action builds a per-customer context (own requests, supported Needs, public Need fields, approved updates, own files, plus Needs related to the question by vector search) and asks a structured AI task for `{answer, links}`. Links outside that context are dropped. Nothing is persisted and nothing is submitted from the Assistant.
+
+## Delivery tracking and customer validation
+
+- **Public statuses:** each project status maps to Planned / In Development / Ready for Review / Released by its stage (`src/domain/tracking.ts`); the PM marks In-progress statuses as Ready for Review. Backlog tickets are not shown to customers.
+- **Timeline:** `ticket_events` records every status move, update and validation with a visibility (`internal` / `customer`). A status move is customer-visible only when the public status changes. Customer pages and My Activity read only customer-visible events, only for tickets in the customer's own company's projects on Needs they follow.
+- **Validation:** after Released, `ticket_validations` stores Looks good or a rework request (customer-confirmed AI context, files linked by `validation_id`). The PM or a staffed engineer reopens (ticket back to the first In-progress status, with a customer-visible note) or declines with a reason. Customers never change ticket status.
 
 ## Authentication
 

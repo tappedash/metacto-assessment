@@ -89,11 +89,13 @@ Sign in with each demo email in turn (magic links arrive in Mailpit; *Sign out* 
 4. **Lena Meyer** → My Activity → the Need now shows *Planned*, the update and the public rationale. Click **✦ Ask Needs Hub** (top right) and ask "What happened to my Excel request?" or "What's the latest update?". You can also attach a file there: it suggests the matching Need and offers *Share this as feedback* (nothing is submitted without you).
 5. **Sam Kim (PM)** → Projects: each project has its own ticket statuses. *Identity Modernization* uses Backlog → Planned → Build → Security review → UAT → Client sign-off → Live. Add, rename, reorder or remove statuses; each belongs to a stage (Backlog, Planned, In progress, Done) that keeps permissions and Need progress working.
 6. **Ravi Patel (engineer)** → My Work: move T-101 from Planned to *In Development*. The Need moves to In Development and a new update draft waits for the PM. Open the ticket and follow *Why are we building this?* to the Need and its evidence (only from staffed clients). Log Client Feedback works like Share Feedback, with client and project.
-7. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
+7. **Lena Meyer** → My Activity → *Your deliveries*: *Bulk rate import from CSV* is **Released** (Recent updates shows "… moved to Released"). Open it: progress (Planned → In Development → Ready for Review → Released) and updates the team shared with customers; Mia's internal note is not there. Choose *Something isn't right*, describe the problem (e.g. "I expected the import to update existing lanes, but it only adds new ones"), optionally attach a screenshot, and *Continue*: AI shows what it understood (expected / what happens / impact). Edit it or *Refine with AI*, then *Confirm and send to the team*. The ticket stays Released until the team decides.
+8. **Sam Kim (PM)** → Tickets shows "1 rework request needs review". Open T-107: read the request, write a note and *Reopen ticket* (it goes back to In Development and Lena sees your note) or *Don't reopen* (the note explains why). On any ticket, post updates as *Internal only* or *Customer visible*. In Projects, the status editor sets which In-progress statuses customers see as *Ready for Review* (Identity Modernization: UAT and Client sign-off).
+9. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
 
 | Role | Seeded users | Area |
 |---|---|---|
-| Client | Lena Meyer (Northwind), Dana Ruiz (Contoso), Omar Haddad (Fabrikam), + SMB clients | `/client/share`, `/client/discover`, `/client/activity`, `/client/needs/[id]` |
+| Client | Lena Meyer (Northwind), Dana Ruiz (Contoso), Omar Haddad (Fabrikam), + SMB clients | `/client/share`, `/client/discover`, `/client/activity`, `/client/needs/[id]`, `/client/tickets/[id]` |
 | Engineer | Ravi Patel (Northwind + Contoso), Mia Chen, Jo Osei | `/engineer/work`, `/engineer/projects`, `/engineer/log`, `/engineer/updates` |
 | Product Manager | Sam Kim | `/pm/triage`, `/pm/needs`, `/pm/tickets`, `/pm/projects`, `/pm/updates` |
 | Workspace Admin | Alex Lee | `/admin/clients`, `/admin/staffing`, `/admin/users`, `/admin/goals`, `/admin/needs` |
@@ -180,6 +182,8 @@ src/
     decisions.ts          AI Brief + rubric (on demand), decisions, update drafts, sending
     triage.ts             accept / move / create Need / merge
     delivery.ts           projects, tickets, moves, technical notes
+    tracking.ts           public ticket statuses, ticket timeline, customer delivery views
+    validation.ts         customer validation after release, rework requests and their review
     workflow.ts           per-project ticket statuses (stages, validation, PM edits)
     attachments.ts        uploads: storage, AI reading, permissions, evidence links
     assistant.ts          client "Ask Needs Hub": grounded context, answers, link checks
@@ -195,7 +199,7 @@ tests/integration/        workflow + matching; needs `npm run setup`
 docs/architecture.md      architecture, tradeoffs, production path
 product_specs/            versioned product spec (latest is the current spec)
 prototypes/               static clickable UI prototypes for all four roles
-diagrams/                 Excalidraw workflow diagrams
+diagrams/                 Excalidraw workflow diagrams; platform_blueprint.excalidraw shows every UX workflow by role
 ```
 
 ## Data model
@@ -203,7 +207,7 @@ diagrams/                 Excalidraw workflow diagrams
 Two layers that meet only through **Ticket → Customer Need**:
 
 - **Product intelligence:** `requests` (Feature Requests, verbatim, with embeddings and match link) → `needs` (Customer Needs, with embeddings and cached AI Brief / rubric) + `supports`, `decisions`, `status_updates`.
-- **Delivery:** `accounts` (clients / prospects) → `projects` (+ `project_members`, `project_statuses`) → `tickets`. Ticket statuses are configured per project; each has a stage (backlog / planned / in_progress / done) that the rules use.
+- **Delivery:** `accounts` (clients / prospects) → `projects` (+ `project_members`, `project_statuses`) → `tickets`. Ticket statuses are configured per project; each has a stage (backlog / planned / in_progress / done) that the rules use, and maps to a public status customers see. `ticket_events` is the ticket timeline (status moves, updates, validations; each Internal only or Customer visible) and `ticket_validations` holds Looks good / rework requests.
 - **Access:** `users` (admin / pm / engineer / client), `staffing` (which accounts an engineer may see), `strategic_goals`.
 
 Demand comes from Feature Requests, supporters and accounts, never from ticket counts.
