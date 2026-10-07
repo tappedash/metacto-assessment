@@ -4,6 +4,8 @@ import { getAi } from "@/ai";
 import { closeDb, getDb } from "./client";
 import { createDefaultWorkflow, DEFAULT_WORKFLOW, projectWorkflow } from "@/domain/workflow";
 import * as s from "./schema";
+import { importGithubActivity } from "@/domain/integrations";
+import { demoGithubActivity } from "@/integrations/github";
 
 // Demo data mirroring the prototypes: two staffed clients, four projects, five
 // Customer Needs with verbatim Feature Requests, and delivery tickets.
@@ -225,6 +227,16 @@ export async function seed({ quiet = false } = {}) {
     needId: need.rates.id, status: "released", subject: "Released: bulk carrier rate import",
     body: "You can now import a whole rate card from CSV (Rates → Import CSV) and review changes before applying them.", approvedBy: sam.id, sentAt: ago(3),
   });
+
+  // Optional integrations, offline demo mode: Carrier Automation is linked to Jira and GitHub.
+  // Every other project uses local Needs Hub tickets only.
+  await db.insert(s.projectIntegrations).values([
+    { projectId: ca.id, kind: "jira", config: { siteUrl: "https://northwind-demo.atlassian.net", projectKey: "CARR", email: "", issueType: "Task", demo: true }, lastSyncAt: ago(1) },
+    { projectId: ca.id, kind: "github", config: { repos: ["northwind/carrier-rates"], demo: true }, lastSyncAt: ago(1) },
+  ]);
+  await db.update(s.tickets).set({ externalKey: "CARR-184", externalUrl: "https://northwind-demo.atlassian.net/browse/CARR-184", externalStatus: "Done", externalAssignee: "Mia Chen", syncedAt: ago(1) })
+    .where(eq(s.tickets.key, "T-107"));
+  await importGithubActivity(ca.id, demoGithubActivity("northwind/carrier-rates"));
 
   if (!quiet) console.log(`Seeded ${needRows.length} Customer Needs, ${REQUESTS.length} Feature Requests, 4 projects, 8 tickets.`);
 }

@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, Notice, TicketStatus, param, type SearchParams } from "@/components/ui";
 import { TicketMove } from "@/components/ticket-move";
+import { TicketEngineering } from "@/components/integrations";
 import { ReworkReview } from "@/components/rework-review";
 import { CommentForm, TeamTimeline } from "@/components/ticket-timeline";
 import { engineers, getTicket } from "@/domain/delivery";
 import { requireActor } from "@/domain/session";
 import { PUBLIC_STATUS, publicStatusOf, teamTimeline } from "@/domain/tracking";
+import { projectIntegrationsFor, ticketActivity } from "@/domain/integrations";
 import { reworkRequests } from "@/domain/validation";
 import { projectWorkflow } from "@/domain/workflow";
 import { addTicketCommentAction, moveTicketAction, publishUpdateAction, reviewReworkAction, updateTicketAction } from "../../actions";
@@ -19,7 +21,7 @@ export default async function PmTicketPage({ params, searchParams }: { params: P
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [workflow, events, reworks, people] = await Promise.all([projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id }), engineers()]);
+  const [workflow, events, reworks, people, activity, integrations] = await Promise.all([projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id }), engineers(), ticketActivity(actor, id), projectIntegrationsFor(ticket.projectId)]);
   const current = workflow.find((s) => s.id === ticket.statusId)!;
   const pub = publicStatusOf(current);
 
@@ -55,6 +57,7 @@ export default async function PmTicketPage({ params, searchParams }: { params: P
         </label>
         <button className="btn btn-ghost btn-sm" type="submit">Save</button>
       </form>
+      <TicketEngineering ticket={ticket} activity={activity} jiraConnected={Boolean(integrations.jira?.enabled)} canLink />
       <ReworkReview reworks={reworks} action={reviewReworkAction.bind(null, id)} canFollowUp />
       <div className="section grid split">
         <div className="card"><h2 style={{ marginBottom: ".9rem" }}>Updates</h2><TeamTimeline events={events} publish={publishUpdateAction.bind(null, id)} /></div>

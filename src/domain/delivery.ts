@@ -17,6 +17,8 @@ const ticketColumns = {
   assigneeId: tickets.assigneeId, assignee: users.name, projectId: projects.id, projectName: projects.name,
   accountId: accounts.id, accountName: accounts.name, needId: needs.id, needTitle: needs.title,
   feasibility: tickets.feasibility, dependencies: tickets.dependencies, notes: tickets.notes,
+  externalKey: tickets.externalKey, externalUrl: tickets.externalUrl, externalStatus: tickets.externalStatus,
+  externalAssignee: tickets.externalAssignee, syncedAt: tickets.syncedAt,
 };
 
 function ticketQuery() {

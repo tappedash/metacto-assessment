@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, Notice, TicketStatus, param, type SearchParams } from "@/components/ui";
-import { listProjects } from "@/domain/delivery";
+import { ProjectIntegrationsPanel, ProjectTraceability } from "@/components/integrations";
+import { listProjects, listTickets } from "@/domain/delivery";
+import { projectActivity, projectIntegrationsFor } from "@/domain/integrations";
 import { requireActor } from "@/domain/session";
 import { STAGES, STAGE_LABEL, projectWorkflow, ticketCountsByStatus } from "@/domain/workflow";
 import { addStatusAction, moveStatusAction, removeStatusAction, updateStatusAction } from "../../actions";
@@ -22,7 +24,7 @@ export default async function ProjectWorkflowPage({ params, searchParams }: { pa
   const sp = await searchParams;
   const project = (await listProjects(actor)).find((p) => p.id === id);
   if (!project) notFound();
-  const [workflow, counts] = await Promise.all([projectWorkflow(id), ticketCountsByStatus(id)]);
+  const [workflow, counts, projectTickets, activity, integrations] = await Promise.all([projectWorkflow(id), ticketCountsByStatus(id), listTickets(actor, { projectId: id }), projectActivity(actor, id), projectIntegrationsFor(id)]);
 
   return (
     <div className="narrow">
@@ -30,7 +32,7 @@ export default async function ProjectWorkflowPage({ params, searchParams }: { pa
       <div className="page-head">
         <div>
           <span className="eyebrow">{project.accountName}</span>
-          <h1>{project.name}: ticket statuses</h1>
+          <h1>{project.name}</h1>
           <p className="lede">Rename, add, reorder or remove statuses to fit how this engagement works. Customers never see these names, only Planned, In Development, Ready for Review or Released.</p>
         </div>
         <Link className="btn btn-ghost btn-sm" href={`/pm/tickets?project=${id}`}>Open board</Link>
@@ -109,6 +111,8 @@ export default async function ProjectWorkflowPage({ params, searchParams }: { pa
         </div>
         <p className="muted" style={{ marginTop: ".6rem" }}>New statuses go at the end of their stage. Use ↑ ↓ to reorder within a stage.</p>
       </form>
+      <ProjectTraceability rows={projectTickets} activity={activity} ticketHref={(t) => `/pm/tickets/${t}`} needHref={(n) => `/pm/needs/${n}`} />
+      <ProjectIntegrationsPanel projectId={id} back={`/pm/projects/${id}`} jira={integrations.jira} github={integrations.github} />
     </div>
   );
 }

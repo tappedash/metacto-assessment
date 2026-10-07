@@ -6,9 +6,11 @@ import { getTicket } from "@/domain/delivery";
 import { getNeed, needSignals } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
 import { projectWorkflow } from "@/domain/workflow";
+import { TicketEngineering } from "@/components/integrations";
 import { ReworkReview } from "@/components/rework-review";
 import { CommentForm, PmInputForm, TeamTimeline } from "@/components/ticket-timeline";
 import { teamTimeline } from "@/domain/tracking";
+import { ticketActivity } from "@/domain/integrations";
 import { reworkRequests } from "@/domain/validation";
 import { addCommentAction, moveMyTicketAction, requestPmInputAction, reviewReworkAction, saveNotesAction } from "../../actions";
 
@@ -21,7 +23,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [need, signals, workflow, events, reworks] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id })]);
+  const [need, signals, workflow, events, reworks, activity] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id }), ticketActivity(actor, id)]);
   const s = signals.get(ticket.needId)!;
   const mine = ticket.assigneeId === actor.id;
 
@@ -50,6 +52,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         <div><dt>Effort</dt><dd>{ticket.effort ?? "Not estimated"}</dd></div>
       </dl>
 
+      <TicketEngineering ticket={ticket} activity={activity} jiraConnected={false} canLink={false} />
       <ReworkReview reworks={reworks} action={reviewReworkAction.bind(null, id)} />
 
       <div className="section grid split">

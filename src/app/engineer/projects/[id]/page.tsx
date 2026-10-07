@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, TicketStatus } from "@/components/ui";
 import { getProject } from "@/domain/delivery";
+import { projectActivity } from "@/domain/integrations";
 import { requireActor } from "@/domain/session";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const actor = await requireActor(["engineer"]);
   const project = await getProject(actor, (await params).id);
   if (!project) notFound();
+  const activity = await projectActivity(actor, project.id, 10);
   return (
     <>
       <Back href="/engineer/projects" label="Projects" />
@@ -53,6 +55,19 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             {project.updates.map((u) => <div className="item" key={u.id}><p className="strong">{u.subject}</p><p className="muted">{u.needTitle} · {u.sentAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</p></div>)}
             {!project.updates.length && <div className="item muted">No approved updates yet.</div>}
           </div>
+          {activity.length > 0 && (
+            <>
+              <div className="section-head" style={{ marginTop: "1.5rem" }}><h2>GitHub activity</h2></div>
+              <div className="card flush list">
+                {activity.map((a) => (
+                  <div className="item" key={a.id}>
+                    <a className="btn-link" href={a.url} target="_blank" rel="noreferrer">{a.kind === "pull_request" ? `PR #${a.ref}` : a.kind === "commit" ? `Commit ${a.ref.slice(0, 7)}` : `Branch ${a.ref}`}</a>
+                    {a.kind !== "branch" && <> {a.title}</>} <span className="muted">· {a.ticketId ? <Link className="btn-link" href={`/engineer/tickets/${a.ticketId}`}>{a.ticketKey}</Link> : "not linked"}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>

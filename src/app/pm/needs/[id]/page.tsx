@@ -253,6 +253,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
                 <select name="effort"><option value="">—</option>{["S", "M", "L", "XL"].map((e) => <option key={e}>{e}</option>)}</select>
               </label>
             </div>
+            <label className="check"><input type="checkbox" name="jira" /> Also create a Jira issue <span className="muted">(only for projects connected to Jira)</span></label>
             <button className="btn btn-dark btn-sm" type="submit">Create in backlog</button>
           </form>
         </details>

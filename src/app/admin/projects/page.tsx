@@ -1,6 +1,8 @@
+import { ProjectIntegrationsPanel } from "@/components/integrations";
 import { Notice, PageHead, param, type SearchParams } from "@/components/ui";
 import { listAccounts, listProjectsAdmin } from "@/domain/admin";
 import { engineers } from "@/domain/delivery";
+import { projectIntegrationsFor } from "@/domain/integrations";
 import { assignEngineerAction, createProjectAction, removeEngineerAction, updateProjectAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +24,13 @@ function ProjectFields({ project, accounts }: { project?: { name: string; accoun
 export default async function AdminProjectsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const [rows, accounts, people] = await Promise.all([listProjectsAdmin(), listAccounts(), engineers()]);
+  const integrations = await Promise.all(rows.map((p) => projectIntegrationsFor(p.id)));
   return (
     <>
       <PageHead eyebrow="Projects" title="Engagements and who works on them" lede="Staffing is Engineer → Account → Project: adding an engineer to a project also staffs them on its client, so they see that client's requests and tickets. Ticket statuses are configured by the PM." />
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
       <div className="stack">
-        {rows.map((p) => {
+        {rows.map((p, i) => {
           const available = people.filter((e) => !p.engineers.some((m) => m.userId === e.id));
           return (
             <details className="card" key={p.id}>
@@ -59,6 +62,7 @@ export default async function AdminProjectsPage({ searchParams }: { searchParams
                 <ProjectFields project={p} accounts={accounts} />
                 <button className="btn btn-primary btn-sm" type="submit">Save project</button>
               </form>
+              <ProjectIntegrationsPanel projectId={p.id} back="/admin/projects" jira={integrations[i].jira} github={integrations[i].github} />
             </details>
           );
         })}

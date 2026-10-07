@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { approveAndSend, ensureNeedInsights, saveDecision, type DecisionInput } from "@/domain/decisions";
 import { createTicket, moveTicket, updateTicket } from "@/domain/delivery";
+import { linkJiraIssue, ticketConnector } from "@/domain/integrations";
 import { RUBRIC_KEYS } from "@/domain/ai-tasks";
 import { requireActor } from "@/domain/session";
 import { acceptSuggestion, assignNeedOwner, createNeed, mergeNeeds, moveToNeed, splitNeed } from "@/domain/triage";
@@ -90,8 +91,14 @@ export async function createTicketAction(needId: string, form: FormData) {
       needId, projectId: str(form, "projectId"), title: str(form, "title"),
       priority: str(form, "priority") || null, effort: str(form, "effort") || null, assigneeId: str(form, "assigneeId") || null,
     });
+    // Optional: also create the Jira issue when the project is connected to Jira.
+    let jira = "";
+    if (form.get("jira") === "on" && (await ticketConnector(str(form, "projectId"))).kind === "jira") {
+      await linkJiraIssue(actor, t.id);
+      jira = " and linked to Jira";
+    }
     refresh();
-    return `${t.key} created in the backlog.`;
+    return `${t.key} created in the backlog${jira}.`;
   });
 }
 
