@@ -5,7 +5,8 @@ import { TicketMove } from "@/components/ticket-move";
 import { getTicket } from "@/domain/delivery";
 import { getNeed, needSignals } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
-import { saveNotesAction } from "../../actions";
+import { projectWorkflow } from "@/domain/workflow";
+import { moveMyTicketAction, saveNotesAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [need, signals] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId])]);
+  const [need, signals, workflow] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId)]);
   const s = signals.get(ticket.needId)!;
   const mine = ticket.assigneeId === actor.id;
 
@@ -26,7 +27,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       <Notice notice={param(sp.notice)} error={param(sp.error)} />
       <div className="page-head">
         <div><span className="ticket-id">{ticket.key}</span><h1>{ticket.title}</h1></div>
-        <div className="btn-row"><TicketMove actor={actor} ticket={ticket} back={`/engineer/tickets/${id}`} /></div>
+        <TicketMove actor={actor} ticket={ticket} statuses={workflow} action={moveMyTicketAction.bind(null, id, `/engineer/tickets/${id}`)} />
       </div>
 
       <div className="card why-panel" style={{ marginBottom: "1rem" }}>
@@ -39,7 +40,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       <dl className="meta-grid card">
         <div><dt>Project</dt><dd><Link className="btn-link" href={`/engineer/projects/${ticket.projectId}`}>{ticket.projectName}</Link></dd></div>
         <div><dt>Client</dt><dd><Link className="btn-link" href={`/engineer/projects#client-${ticket.accountId}`}>{ticket.accountName}</Link></dd></div>
-        <div><dt>Status</dt><dd><TicketStatus status={ticket.status} /></dd></div>
+        <div><dt>Status</dt><dd><TicketStatus name={ticket.statusName} stage={ticket.stage} /> <span className="muted">{workflow.map((s) => s.name).join(" → ")}</span></dd></div>
         <div><dt>Priority</dt><dd className="prio">{ticket.priority ?? "—"}</dd></div>
         <div><dt>Assignee</dt><dd>{ticket.assignee ?? "Unassigned"}{mine ? " (you)" : ""}</dd></div>
         <div><dt>Effort</dt><dd>{ticket.effort ?? "Not estimated"}</dd></div>

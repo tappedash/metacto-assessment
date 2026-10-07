@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Scope | Local MVP: the simplest architecture that proves the end-to-end workflow |
-| Product spec | `product_specs/mvp_spec_20261007-061957.md` (v0.2) |
+| Product spec | `product_specs/mvp_spec_20261007-165228.md` (v0.3) |
 | AI provider | OpenAI (single vendor), with a deterministic mock for running without a key |
 
 ## Goals
@@ -110,7 +110,7 @@ PostgreSQL 17 with pgvector, schema in `src/db/schema.ts`, migrations in `drizzl
 Two separate layers that meet only through Ticket → Customer Need:
 
 - Product intelligence: Feature Request → Customer Need (+ supports, decisions, status updates)
-- Delivery: Account (client) → Project → Ticket
+- Delivery: Account (client) → Project → Ticket, with ticket statuses configured per project (each mapped to a fixed stage that the rules use)
 
 ## Permissions
 

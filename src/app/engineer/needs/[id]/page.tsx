@@ -51,7 +51,7 @@ export default async function EngineerNeedPage({ params }: { params: Promise<{ i
               <div className="item item-body" key={t.id}>
                 <div><span className="ticket-id">{t.key}</span><br /><Link className="row-link" href={`/engineer/tickets/${t.id}`}>{t.title}</Link>
                   <p className="muted"><Link className="btn-link" href={`/engineer/projects/${t.projectId}`}>{t.projectName}</Link> · {t.accountName}</p></div>
-                <TicketStatus status={t.status} />
+                <TicketStatus name={t.statusName} stage={t.stage} />
               </div>
             ))}
             {hiddenTickets > 0 && <div className="item muted">+{hiddenTickets} ticket{hiddenTickets === 1 ? "" : "s"} on other engagements</div>}

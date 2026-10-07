@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { accounts, needs, projects, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
+import { accounts, needs, projects, projectStatuses, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
 import { canViewAccountEvidence, type Actor } from "./permissions";
 
 // Demand comes from Feature Requests, supporters and accounts. Strategic Value comes
@@ -109,11 +109,12 @@ export async function needEvidence(needId: string, actor: Actor) {
 export async function needTickets(needId: string) {
   return getDb()
     .select({
-      id: tickets.id, key: tickets.key, title: tickets.title, status: tickets.status, priority: tickets.priority, effort: tickets.effort,
+      id: tickets.id, key: tickets.key, title: tickets.title, statusName: projectStatuses.name, stage: projectStatuses.stage, priority: tickets.priority, effort: tickets.effort,
       projectId: projects.id, projectName: projects.name, accountId: accounts.id, accountName: accounts.name, assignee: users.name,
     })
     .from(tickets)
     .innerJoin(projects, eq(projects.id, tickets.projectId))
+    .innerJoin(projectStatuses, eq(projectStatuses.id, tickets.statusId))
     .innerJoin(accounts, eq(accounts.id, projects.accountId))
     .leftJoin(users, eq(users.id, tickets.assigneeId))
     .where(eq(tickets.needId, needId))

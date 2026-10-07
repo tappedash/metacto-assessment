@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Notice, PageHead, TicketStatus, param, type SearchParams } from "@/components/ui";
 import { TicketMove } from "@/components/ticket-move";
 import { engineers, feedbackTargets, listProjects, listTickets } from "@/domain/delivery";
-import { TICKET_ORDER, TICKET_STATUS } from "@/domain/labels";
 import { requireActor } from "@/domain/session";
+import { statusesFor } from "@/domain/workflow";
+import { boardColumns } from "@/components/board-columns";
+import { moveMyTicketAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,9 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Searc
   const assignee = sp.assignee === undefined ? actor.id : param(sp.assignee); // default: me; "" = everyone
   const filters = { q: param(sp.q), projectId: param(sp.project), accountId: param(sp.client), priority: param(sp.priority), assigneeId: assignee };
   const [tickets, projects, clients, people] = await Promise.all([listTickets(actor, filters), listProjects(actor), feedbackTargets(actor), engineers()]);
+  const workflows = await statusesFor(projects.map((p) => p.id));
+  // One project selected: its own status columns. Otherwise: the four stages.
+  const columns = boardColumns(tickets, filters.projectId ? workflows.get(filters.projectId) ?? null : null);
   // Keep the current filters when switching Board/Backlog or returning from an action.
   const qs = (v: string) => {
     const p = new URLSearchParams();
@@ -47,19 +52,24 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Searc
       <p className="muted" aria-live="polite" style={{ margin: "-.4rem 0 .9rem" }}>{tickets.length} ticket{tickets.length === 1 ? "" : "s"}</p>
 
       {view === "board" ? (
-        <div className="board four">
-          {TICKET_ORDER.map((status) => {
-            const cards = tickets.filter((t) => t.status === status);
+        <div className="board dyn" style={{ "--cols": columns.length } as React.CSSProperties}>
+          {columns.map((col) => {
+            const cards = col.cards;
             return (
-              <section className="col" key={status} aria-label={TICKET_STATUS[status].label}>
-                <div className="col-head"><h2>{TICKET_STATUS[status].label}</h2><span>{cards.length}</span></div>
+              <section className="col" key={col.key} aria-label={col.title}>
+                <div className="col-head"><h2>{col.title}</h2><span>{cards.length}</span></div>
                 {cards.map((t) => (
                   <div className={`ticket${t.assigneeId === actor.id ? " mine" : ""}`} key={t.id}>
                     <span className="ticket-id">{t.key} · <span className="prio">{t.priority ?? "—"}</span> · Effort {t.effort ?? "—"}</span>
                     <span className="t-title"><Link className="row-link" href={`/engineer/tickets/${t.id}`}>{t.title}</Link></span>
                     <span className="muted">{t.projectName} · {t.accountName}</span>
-                    <span className="meta"><span className="chip">{t.assignee ?? "Unassigned"}{t.assigneeId === actor.id ? " (you)" : ""}</span></span>
-                    <div className="btn-row" style={{ marginTop: ".55rem" }}><TicketMove actor={actor} ticket={t} back={back} /></div>
+                    <span className="meta">
+                      {!filters.projectId && <TicketStatus name={t.statusName} stage={t.stage} />}
+                      <span className="chip">{t.assignee ?? "Unassigned"}{t.assigneeId === actor.id ? " (you)" : ""}</span>
+                    </span>
+                    <div style={{ marginTop: ".55rem" }}>
+                      <TicketMove actor={actor} ticket={t} statuses={workflows.get(t.projectId) ?? []} action={moveMyTicketAction.bind(null, t.id, back)} />
+                    </div>
                   </div>
                 ))}
                 {!cards.length && <p className="muted" style={{ padding: ".3rem" }}>No tickets</p>}
@@ -80,7 +90,7 @@ export default async function MyWorkPage({ searchParams }: { searchParams: Searc
                   <td data-label="Priority" className="prio">{t.priority ?? "—"}</td>
                   <td data-label="Effort">{t.effort ?? "—"}</td>
                   <td data-label="Assignee">{t.assignee ?? "Unassigned"}</td>
-                  <td data-label="Status"><TicketStatus status={t.status} /></td>
+                  <td data-label="Status"><TicketStatus name={t.statusName} stage={t.stage} /></td>
                 </tr>
               ))}
               {!tickets.length && <tr><td colSpan={7} className="muted">No tickets match these filters. <Link href="/engineer/work?view=backlog&assignee=">Show everyone&apos;s tickets</Link></td></tr>}

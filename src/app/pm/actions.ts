@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { approveAndSend, ensureNeedInsights, saveDecision, type DecisionInput } from "@/domain/decisions";
 import { createTicket, moveTicket } from "@/domain/delivery";
 import { RUBRIC_KEYS } from "@/domain/ai-tasks";
-import type { TicketStatus } from "@/domain/permissions";
 import { requireActor } from "@/domain/session";
 import { acceptSuggestion, createNeed, mergeNeeds, moveToNeed } from "@/domain/triage";
+import { addStatus, moveStatus, removeStatus, updateStatus, type Stage } from "@/domain/workflow";
 import { str, withFlash } from "@/lib/flash";
 
 // PM server actions. Each re-checks the role before touching data.
@@ -79,12 +79,46 @@ export async function createTicketAction(needId: string, form: FormData) {
   });
 }
 
-export async function moveTicketAction(ticketId: string, to: TicketStatus, back: string) {
+export async function moveTicketAction(ticketId: string, back: string, form: FormData) {
   const actor = await requireActor(["pm"]);
   await withFlash(back, async () => {
-    const { needStatusChanged } = await moveTicket(actor, ticketId, to);
+    const { needStatusChanged, status } = await moveTicket(actor, ticketId, str(form, "to"));
     refresh();
-    return needStatusChanged ? "Ticket moved. Customer Need status changed; AI drafted an update for approval." : "Ticket moved.";
+    return needStatusChanged ? `Moved to ${status}. Customer Need status changed; AI drafted an update for approval.` : `Moved to ${status}.`;
+  });
+}
+
+// ---------- per-project ticket workflow ----------
+
+export async function addStatusAction(projectId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/projects/${projectId}`, async () => {
+    await addStatus(actor, projectId, str(form, "name"), str(form, "stage") as Stage);
+    refresh();
+    return `Added "${str(form, "name")}".`;
+  });
+}
+
+export async function updateStatusAction(projectId: string, statusId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/projects/${projectId}`, async () => {
+    await updateStatus(actor, statusId, { name: str(form, "name"), stage: str(form, "stage") as Stage });
+    refresh();
+    return "Status saved.";
+  });
+}
+
+export async function moveStatusAction(projectId: string, statusId: string, direction: "up" | "down") {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/projects/${projectId}`, async () => { await moveStatus(actor, statusId, direction); refresh(); return "Order saved."; });
+}
+
+export async function removeStatusAction(projectId: string, statusId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/projects/${projectId}`, async () => {
+    await removeStatus(actor, statusId, str(form, "replacementId") || null);
+    refresh();
+    return "Status removed.";
   });
 }
 

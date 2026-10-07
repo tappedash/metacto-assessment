@@ -516,3 +516,12 @@ a.row-link:hover, a.btn-link:hover { text-decoration: underline; }
 .login-grid button { width: 100%; text-align: left; justify-content: flex-start; }
 details > summary { cursor: pointer; }
 .chk-cell { text-align: center; }
+
+/* boards with a project's own number of status columns */
+.board.dyn { grid-template-columns: repeat(var(--cols, 4), minmax(190px, 1fr)); overflow-x: auto; padding-bottom: .25rem; }
+.col-stage { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--font-gray); display: block; }
+.wf-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: .5rem; align-items: center; }
+@media (max-width: 700px) {
+  .board.dyn { grid-template-columns: 1fr; }
+  .wf-row { grid-template-columns: 1fr; }
+}

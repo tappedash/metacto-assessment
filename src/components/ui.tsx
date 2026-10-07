@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { NEED_STATUS, TICKET_STATUS } from "@/domain/labels";
+import { NEED_STATUS, STAGE_CHIP } from "@/domain/labels";
 
 export function NeedStatus({ status }: { status: string }) {
   const s = NEED_STATUS[status] ?? NEED_STATUS.under_review;
   return <span className={`chip ${s.chip}`}>{s.label}</span>;
 }
 
-export function TicketStatus({ status }: { status: string }) {
-  const s = TICKET_STATUS[status] ?? TICKET_STATUS.backlog;
-  return <span className={`chip ${s.chip}`}>{s.label}</span>;
+/** A project's own status name, styled by its stage. */
+export function TicketStatus({ name, stage }: { name: string; stage: string }) {
+  return <span className={`chip ${STAGE_CHIP[stage] ?? STAGE_CHIP.backlog}`}>{name}</span>;
 }
 
 export function Back({ href, label }: { href: string; label: string }) {

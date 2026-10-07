@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, getDb } from "@/db/client";
-import { needs, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
+import { needs, projectStatuses, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
 import { approveAndSend, ensureNeedInsights, saveDecision } from "@/domain/decisions";
 import { moveTicket } from "@/domain/delivery";
 import { checkFeedback, submitFeedback } from "@/domain/feedback";
@@ -109,8 +109,10 @@ describe("end-to-end workflow", () => {
   it("6. engineer delivers: starting the first ticket moves the Need to In Development and drafts an update", async () => {
     const [t101] = await getDb().select().from(tickets).where(eq(tickets.key, "T-101"));
     const [t102] = await getDb().select().from(tickets).where(eq(tickets.key, "T-102"));
-    await expect(moveTicket(ravi, t102.id, "planned")).rejects.toThrow(); // Backlog -> Planned is a PM decision
-    const { needStatusChanged } = await moveTicket(ravi, t101.id, "in_development");
+    const status = async (projectId: string, name: string) =>
+      (await getDb().select().from(projectStatuses).where(and(eq(projectStatuses.projectId, projectId), eq(projectStatuses.name, name))))[0].id;
+    await expect(moveTicket(ravi, t102.id, await status(t102.projectId, "Planned"))).rejects.toThrow(); // out of Backlog is a PM decision
+    const { needStatusChanged } = await moveTicket(ravi, t101.id, await status(t101.projectId, "In Development"));
     expect(needStatusChanged).toBe("in_development");
     const drafts = await getDb().select().from(statusUpdates).where(and(eq(statusUpdates.needId, exportNeedId), eq(statusUpdates.status, "in_development")));
     expect(drafts.some((d) => d.approvedBy === null)).toBe(true);

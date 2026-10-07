@@ -20,16 +20,26 @@ describe("evidence visibility", () => {
   });
 });
 
-describe("ticket moves", () => {
-  it("lets engineers move only their own tickets through delivery states", () => {
-    expect(allowedTicketMoves(ravi, { assigneeId: "ravi", status: "planned" })).toEqual(["in_development"]);
-    expect(allowedTicketMoves(ravi, { assigneeId: "ravi", status: "in_development" })).toEqual(["released"]);
-    expect(allowedTicketMoves(ravi, { assigneeId: "ravi", status: "backlog" })).toEqual([]); // PM plans
-    expect(allowedTicketMoves(ravi, { assigneeId: "mia", status: "planned" })).toEqual([]);
+describe("ticket moves over a project's configurable statuses", () => {
+  // A custom workflow: names are free, stages drive the rules.
+  const flow = [
+    { id: "backlog", stage: "backlog" as const }, { id: "planned", stage: "planned" as const },
+    { id: "build", stage: "in_progress" as const }, { id: "uat", stage: "in_progress" as const }, { id: "live", stage: "done" as const },
+  ];
+  const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+
+  it("lets engineers move their own tickets between any non-Backlog statuses", () => {
+    expect(ids(allowedTicketMoves(ravi, { assigneeId: "ravi", statusId: "planned", stage: "planned" }, flow))).toEqual(["build", "uat", "live"]);
+    expect(ids(allowedTicketMoves(ravi, { assigneeId: "ravi", statusId: "uat", stage: "in_progress" }, flow))).toEqual(["planned", "build", "live"]);
   });
 
-  it("lets the PM move any ticket", () => {
-    expect(allowedTicketMoves(pm, { assigneeId: null, status: "backlog" })).toContain("planned");
+  it("keeps Backlog a PM decision and other people's tickets off limits", () => {
+    expect(allowedTicketMoves(ravi, { assigneeId: "ravi", statusId: "backlog", stage: "backlog" }, flow)).toEqual([]);
+    expect(allowedTicketMoves(ravi, { assigneeId: "mia", statusId: "build", stage: "in_progress" }, flow)).toEqual([]);
+  });
+
+  it("lets the PM move any ticket to any status", () => {
+    expect(ids(allowedTicketMoves(pm, { assigneeId: null, statusId: "backlog", stage: "backlog" }, flow))).toEqual(["planned", "build", "uat", "live"]);
   });
 });
 

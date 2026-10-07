@@ -12,6 +12,7 @@ export default async function PmLayout({ children }: { children: ReactNode }) {
       { href: "/pm/triage", label: "Triage", icon: "inbox", count: triage },
       { href: "/pm/needs", label: "Customer Needs", icon: "layers" },
       { href: "/pm/tickets", label: "Tickets", icon: "kanban" },
+      { href: "/pm/projects", label: "Projects", icon: "folder" },
       { href: "/pm/updates", label: "Updates", icon: "send", count: drafts },
     ]}>{children}</Shell>
   );

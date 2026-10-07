@@ -2,16 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { moveTicket, saveTicketNotes } from "@/domain/delivery";
-import type { TicketStatus } from "@/domain/permissions";
 import { requireActor } from "@/domain/session";
 import { str, withFlash } from "@/lib/flash";
 
-export async function moveMyTicketAction(ticketId: string, to: TicketStatus, back: string) {
+export async function moveMyTicketAction(ticketId: string, back: string, form: FormData) {
   const actor = await requireActor(["engineer"]);
   await withFlash(back, async () => {
-    const { needStatusChanged } = await moveTicket(actor, ticketId, to);
+    const { needStatusChanged, status } = await moveTicket(actor, ticketId, str(form, "to"));
     revalidatePath("/", "layout");
-    return needStatusChanged ? "Ticket moved. AI drafted a customer update for the PM to approve." : "Ticket moved.";
+    return needStatusChanged ? `Moved to ${status}. AI drafted a customer update for the PM to approve.` : `Moved to ${status}.`;
   });
 }
 

@@ -60,7 +60,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
   const cite = (ids: string[]) => ids.map((c) => label.get(c)).filter(Boolean).map((l) => <a key={l} className="cite" href={`#ev-${l}`}>{l}</a>);
   const final = (need.rubricFinal ?? {}) as Record<string, number>;
   const aiScore = (key: string) => insights?.rubric.criteria.find((c) => c.key === key);
-  const engineerEfforts = ticketRows.filter((t) => t.status !== "released");
+  const engineerEfforts = ticketRows.filter((t) => t.stage !== "done");
   const suggested = insights?.rubric.suggestedPriority;
   const currentPriority = need.priority ?? suggested ?? "P2";
 
@@ -213,7 +213,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
                   <td className="primary"><span className="ticket-id">{t.key}</span><br /><span className="strong">{t.title}</span></td>
                   <td data-label="Project · Client">{t.projectName} · {t.accountName}</td>
                   <td data-label="Assignee">{t.assignee ?? "Unassigned"}</td>
-                  <td data-label="Status"><TicketStatus status={t.status} /></td>
+                  <td data-label="Status"><TicketStatus name={t.statusName} stage={t.stage} /></td>
                 </tr>
               ))}
               {!ticketRows.length && <tr><td colSpan={4} className="muted">No delivery tickets yet.</td></tr>}

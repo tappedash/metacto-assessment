@@ -2,7 +2,7 @@
 // and impossible to bypass from the UI.
 
 export type Role = "admin" | "pm" | "engineer" | "client";
-export type TicketStatus = "backlog" | "planned" | "in_development" | "released";
+export type Stage = "backlog" | "planned" | "in_progress" | "done";
 
 export interface Actor {
   id: string;
@@ -33,17 +33,20 @@ export function canDecideOnNeed(actor: Actor): boolean {
   return actor.role === "pm";
 }
 
-const ENGINEER_MOVES: Partial<Record<TicketStatus, TicketStatus>> = {
-  planned: "in_development",
-  in_development: "released",
-};
-
-/** Delivery states an actor may move a ticket to. Backlog -> Planned is a PM decision. */
-export function allowedTicketMoves(actor: Actor, ticket: { assigneeId: string | null; status: TicketStatus }): TicketStatus[] {
-  if (actor.role === "pm") return (["backlog", "planned", "in_development", "released"] as const).filter((s) => s !== ticket.status);
-  if (actor.role === "engineer" && ticket.assigneeId === actor.id) {
-    const next = ENGINEER_MOVES[ticket.status];
-    return next ? [next] : [];
+/**
+ * Project statuses an actor may move a ticket to. Statuses are configured per project;
+ * the rules use their stage: only the PM moves tickets out of Backlog, and engineers move
+ * their own tickets between any non-Backlog statuses.
+ */
+export function allowedTicketMoves<S extends { id: string; stage: Stage }>(
+  actor: Actor,
+  ticket: { assigneeId: string | null; statusId: string; stage: Stage },
+  projectStatuses: S[],
+): S[] {
+  const others = projectStatuses.filter((s) => s.id !== ticket.statusId);
+  if (actor.role === "pm") return others;
+  if (actor.role === "engineer" && ticket.assigneeId === actor.id && ticket.stage !== "backlog") {
+    return others.filter((s) => s.stage !== "backlog");
   }
   return [];
 }

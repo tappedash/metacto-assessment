@@ -15,6 +15,20 @@
       "when": 1791380821840,
       "tag": "0001_init_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791389337965,
+      "tag": "0002_project_statuses",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791389354950,
+      "tag": "0003_tickets_use_project_statuses",
+      "breakpoints": true
     }
   ]
 }

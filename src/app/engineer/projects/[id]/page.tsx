@@ -34,7 +34,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
                     <td className="primary"><span className="ticket-id">{t.key}</span><br /><Link className="row-link" href={`/engineer/tickets/${t.id}`}>{t.title}</Link></td>
                     <td data-label="Priority" className="prio">{t.priority ?? "—"}</td>
                     <td data-label="Assignee">{t.assignee ?? "Unassigned"}</td>
-                    <td data-label="Status"><TicketStatus status={t.status} /></td>
+                    <td data-label="Status"><TicketStatus name={t.statusName} stage={t.stage} /></td>
                   </tr>
                 ))}
                 {!project.tickets.length && <tr><td colSpan={4} className="muted">No tickets yet.</td></tr>}

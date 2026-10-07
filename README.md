@@ -63,14 +63,15 @@ Sign in at http://localhost:3000 as each user in turn ("Switch user" sits at the
 2. **Sam Kim (PM)** → Triage holds only uncertain cases. Customer Needs shows Demand and Strategic Value separately (dark mode: very high demand, low strategic value; SSO: medium demand, very high strategic value). Open *Use product data outside the platform*: the AI Brief cites the evidence (R1, R2...), the rubric shows AI scores next to your final scores. Pick a priority, choose *Plan*, write a rationale and *Save decision*. AI drafts a customer update; edit it in Updates and *Approve & send*.
 3. **Mailpit** (http://localhost:8025) shows the emails to requesters, supporters and staffed engineers.
 4. **Lena Meyer** → My Activity → the Need now shows *Planned*, the update and the public rationale.
-5. **Ravi Patel (engineer)** → My Work: *Start development* on T-101. The Need moves to In Development and a new update draft waits for the PM. Open the ticket and follow *Why are we building this?* to the Need and its evidence (only from staffed clients). Log Client Feedback works like Share Feedback, with client and project.
-6. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
+5. **Sam Kim (PM)** → Projects: each project has its own ticket statuses. *Identity Modernization* uses Backlog → Planned → Build → Security review → UAT → Client sign-off → Live. Add, rename, reorder or remove statuses; each belongs to a stage (Backlog, Planned, In progress, Done) that keeps permissions and Need progress working.
+6. **Ravi Patel (engineer)** → My Work: move T-101 from Planned to *In Development*. The Need moves to In Development and a new update draft waits for the PM. Open the ticket and follow *Why are we building this?* to the Need and its evidence (only from staffed clients). Log Client Feedback works like Share Feedback, with client and project.
+7. **Alex Lee (admin)** → Clients, Staffing (saves on each tick), Users, Strategic Goals, and a read-only view of Customer Needs.
 
 | Role | Seeded users | Area |
 |---|---|---|
 | Client | Lena Meyer (Northwind), Dana Ruiz (Contoso), Omar Haddad (Fabrikam), + SMB clients | `/client/share`, `/client/discover`, `/client/activity`, `/client/needs/[id]` |
 | Engineer | Ravi Patel (Northwind + Contoso), Mia Chen, Jo Osei | `/engineer/work`, `/engineer/projects`, `/engineer/log`, `/engineer/updates` |
-| Product Manager | Sam Kim | `/pm/triage`, `/pm/needs`, `/pm/tickets`, `/pm/updates` |
+| Product Manager | Sam Kim | `/pm/triage`, `/pm/needs`, `/pm/tickets`, `/pm/projects`, `/pm/updates` |
 | Workspace Admin | Alex Lee | `/admin/clients`, `/admin/staffing`, `/admin/users`, `/admin/goals`, `/admin/needs` |
 
 `npm run db:seed` resets the demo data at any time.
@@ -129,7 +130,7 @@ src/
   app/                    Next.js App Router (server components + server actions)
     (auth)/login/         demo sign-in (session cookie = seeded user id)
     client/               Share Feedback, Discover, My Activity, public Need page
-    pm/                   Triage, Customer Needs, Need decision screen, Tickets, Updates
+    pm/                   Triage, Customer Needs, Need decision screen, Tickets, Projects (statuses), Updates
     engineer/             My Work (Board/Backlog), Projects, Tickets, Needs, Log feedback, Updates
     admin/                Clients, Staffing, Users, Strategic Goals, read-only Needs
     actions/feedback.ts   intake server actions shared by clients and engineers
@@ -155,6 +156,7 @@ src/
     decisions.ts          AI Brief + rubric (on demand), decisions, update drafts, sending
     triage.ts             accept / move / create Need / merge
     delivery.ts           projects, tickets, moves, technical notes
+    workflow.ts           per-project ticket statuses (stages, validation, PM edits)
     admin.ts              clients, staffing, users, strategic goals
     permissions.ts        server-side role / staffing / public-field rules
   lib/
@@ -175,7 +177,7 @@ diagrams/                 Excalidraw workflow diagrams
 Two layers that meet only through **Ticket → Customer Need**:
 
 - **Product intelligence:** `requests` (Feature Requests, verbatim, with embeddings and match link) → `needs` (Customer Needs, with embeddings and cached AI Brief / rubric) + `supports`, `decisions`, `status_updates`.
-- **Delivery:** `accounts` (clients / prospects) → `projects` (+ `project_members`) → `tickets`.
+- **Delivery:** `accounts` (clients / prospects) → `projects` (+ `project_members`, `project_statuses`) → `tickets`. Ticket statuses are configured per project; each has a stage (backlog / planned / in_progress / done) that the rules use.
 - **Access:** `users` (admin / pm / engineer / client), `staffing` (which accounts an engineer may see), `strategic_goals`.
 
 Demand comes from Feature Requests, supporters and accounts, never from ticket counts.

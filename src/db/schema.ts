@@ -1,5 +1,5 @@
 import {
-  boolean, integer, jsonb, pgEnum, pgTable, primaryKey, real, text, timestamp, uuid, vector,
+  boolean, integer, jsonb, pgEnum, pgTable, primaryKey, real, text, timestamp, unique, uuid, vector,
 } from "drizzle-orm/pg-core";
 
 // pgvector column size. OpenAI embeddings are requested at this size; changing it
@@ -14,7 +14,10 @@ export const needStatus = pgEnum("need_status", ["under_review", "planned", "in_
 export const priority = pgEnum("priority", ["P0", "P1", "P2", "P3"]);
 export const linkType = pgEnum("link_type", ["same", "related", "new"]);
 export const linkState = pgEnum("link_state", ["confirmed", "triage"]);
-export const ticketStatus = pgEnum("ticket_status", ["backlog", "planned", "in_development", "released"]);
+// Fixed stages behind each project's configurable ticket statuses. Rules use the stage:
+// only the PM moves tickets out of Backlog; engineers move their own tickets through the rest;
+// the first ticket In progress moves the Need to In Development, all Done -> Released.
+export const statusStage = pgEnum("status_stage", ["backlog", "planned", "in_progress", "done"]);
 export const effort = pgEnum("effort", ["S", "M", "L", "XL"]);
 export const decisionType = pgEnum("decision_type", ["plan", "defer", "more_info", "not_planned"]);
 
@@ -125,6 +128,15 @@ export const projects = pgTable("projects", {
   ...timestamps,
 });
 
+// Per-project ticket statuses, configured by the PM. Ordered by position; stages never go backwards.
+export const projectStatuses = pgTable("project_statuses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  stage: statusStage("stage").notNull(),
+  position: integer("position").notNull(),
+}, (t) => [unique("project_statuses_project_name").on(t.projectId, t.name)]);
+
 export const projectMembers = pgTable("project_members", {
   projectId: uuid("project_id").notNull().references(() => projects.id),
   userId: uuid("user_id").notNull().references(() => users.id),
@@ -136,7 +148,7 @@ export const tickets = pgTable("tickets", {
   projectId: uuid("project_id").notNull().references(() => projects.id),
   needId: uuid("need_id").notNull().references(() => needs.id), // "why are we building this?"
   title: text("title").notNull(),
-  status: ticketStatus("status").notNull().default("backlog"),
+  statusId: uuid("status_id").notNull().references(() => projectStatuses.id),
   priority: priority("priority"),
   effort: effort("effort"),
   assigneeId: uuid("assignee_id").references(() => users.id),

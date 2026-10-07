@@ -7,14 +7,13 @@ export const NEED_STATUS: Record<string, { label: string; chip: string }> = {
   not_planned: { label: "Not Planned", chip: "st-notplanned" },
 };
 
-export const TICKET_STATUS: Record<string, { label: string; chip: string }> = {
-  backlog: { label: "Backlog", chip: "st-review" },
-  planned: { label: "Planned", chip: "st-planned" },
-  in_development: { label: "In Development", chip: "st-dev" },
-  released: { label: "Released", chip: "st-released" },
+// Ticket statuses are configured per project; their chip colour/shape follows the stage.
+export const STAGE_CHIP: Record<string, string> = {
+  backlog: "st-review",
+  planned: "st-planned",
+  in_progress: "st-dev",
+  done: "st-released",
 };
-
-export const TICKET_ORDER = ["backlog", "planned", "in_development", "released"] as const;
 
 export const ROLE_LABEL: Record<string, string> = {
   admin: "Workspace Admin",

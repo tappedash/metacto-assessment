@@ -1,14 +1,16 @@
 import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { accounts, needs, projectMembers, projects, statusUpdates, tickets, users } from "@/db/schema";
+import { accounts, needs, projectMembers, projects, projectStatuses, statusUpdates, tickets, users } from "@/db/schema";
 import { draftStatusUpdate } from "./decisions";
-import { allowedTicketMoves, canViewAccountEvidence, type Actor, type TicketStatus } from "./permissions";
+import { allowedTicketMoves, canViewAccountEvidence, type Actor } from "./permissions";
+import { projectWorkflow } from "./workflow";
 
 // Delivery layer: Client (account) -> Project -> Ticket. Each ticket links to the
 // Customer Need that explains why it is being built.
 
 const ticketColumns = {
-  id: tickets.id, key: tickets.key, title: tickets.title, status: tickets.status, priority: tickets.priority, effort: tickets.effort,
+  id: tickets.id, key: tickets.key, title: tickets.title, priority: tickets.priority, effort: tickets.effort,
+  statusId: projectStatuses.id, statusName: projectStatuses.name, stage: projectStatuses.stage, statusPosition: projectStatuses.position,
   assigneeId: tickets.assigneeId, assignee: users.name, projectId: projects.id, projectName: projects.name,
   accountId: accounts.id, accountName: accounts.name, needId: needs.id, needTitle: needs.title,
   feasibility: tickets.feasibility, dependencies: tickets.dependencies, notes: tickets.notes,
@@ -19,6 +21,7 @@ function ticketQuery() {
     .select(ticketColumns)
     .from(tickets)
     .innerJoin(projects, eq(projects.id, tickets.projectId))
+    .innerJoin(projectStatuses, eq(projectStatuses.id, tickets.statusId))
     .innerJoin(accounts, eq(accounts.id, projects.accountId))
     .innerJoin(needs, eq(needs.id, tickets.needId))
     .leftJoin(users, eq(users.id, tickets.assigneeId));
@@ -60,33 +63,31 @@ export async function getTicket(actor: Actor, id: string) {
 }
 
 /**
- * Moves a ticket if the actor may. The Customer Need follows delivery:
- * first ticket in development -> Need "In Development"; all tickets released -> Need "Released".
- * Each Need status change drafts a customer update for the PM to approve.
+ * Moves a ticket to one of its project's statuses if the actor may. The Customer Need
+ * follows delivery by stage: first ticket In progress -> Need "In Development"; all
+ * tickets Done -> Need "Released". Each Need change drafts an update for the PM.
  */
-export async function moveTicket(actor: Actor, ticketId: string, to: TicketStatus) {
+export async function moveTicket(actor: Actor, ticketId: string, toStatusId: string) {
   const db = getDb();
-  const [ticket] = await db.select().from(tickets).where(eq(tickets.id, ticketId));
-  if (!ticket) throw new Error("Ticket not found");
-  if (actor.role === "engineer") {
-    const visible = await getTicket(actor, ticketId);
-    if (!visible) throw new Error("Ticket not found");
-  }
-  if (!allowedTicketMoves(actor, { assigneeId: ticket.assigneeId, status: ticket.status }).includes(to)) {
-    throw new Error("You can't move this ticket to that status");
-  }
-  await db.update(tickets).set({ status: to }).where(eq(tickets.id, ticketId));
+  const [ticket] = await ticketQuery().where(eq(tickets.id, ticketId));
+  if (!ticket || (actor.role === "engineer" && !canViewAccountEvidence(actor, ticket.accountId))) throw new Error("Ticket not found");
+  const workflow = await projectWorkflow(ticket.projectId);
+  const target = allowedTicketMoves(actor, { assigneeId: ticket.assigneeId, statusId: ticket.statusId, stage: ticket.stage }, workflow)
+    .find((s) => s.id === toStatusId);
+  if (!target) throw new Error("You can't move this ticket to that status");
+  await db.update(tickets).set({ statusId: target.id }).where(eq(tickets.id, ticketId));
 
   const [need] = await db.select().from(needs).where(eq(needs.id, ticket.needId));
-  const siblings = await db.select({ status: tickets.status }).from(tickets).where(eq(tickets.needId, ticket.needId));
+  const siblings = await db.select({ stage: projectStatuses.stage }).from(tickets)
+    .innerJoin(projectStatuses, eq(projectStatuses.id, tickets.statusId)).where(eq(tickets.needId, ticket.needId));
   let next: "in_development" | "released" | null = null;
-  if (to === "in_development" && need.status === "planned") next = "in_development";
-  if (to === "released" && siblings.every((s) => s.status === "released") && need.status !== "released") next = "released";
+  if (target.stage === "in_progress" && need.status === "planned") next = "in_development";
+  if (target.stage === "done" && siblings.every((s) => s.stage === "done") && need.status !== "released") next = "released";
   if (next) {
     await db.update(needs).set({ status: next }).where(eq(needs.id, need.id));
     await draftStatusUpdate(need.id, next, next === "released" ? "All delivery work for this is now released." : "Engineering has started building this.");
   }
-  return { needStatusChanged: next };
+  return { needStatusChanged: next, status: target.name };
 }
 
 export async function nextTicketKey(): Promise<string> {
@@ -98,8 +99,11 @@ export async function createTicket(actor: Actor, input: { needId: string; projec
   if (actor.role !== "pm") throw new Error("Only the Product Manager creates tickets");
   if (!input.title.trim()) throw new Error("Give the ticket a title");
   const key = await nextTicketKey();
+  // New tickets start in the project's first Backlog status.
+  const start = (await projectWorkflow(input.projectId)).find((s) => s.stage === "backlog");
+  if (!start) throw new Error("This project has no Backlog status");
   const [row] = await getDb().insert(tickets).values({
-    key, title: input.title.trim(), needId: input.needId, projectId: input.projectId,
+    key, title: input.title.trim(), needId: input.needId, projectId: input.projectId, statusId: start.id,
     priority: (input.priority || null) as "P1" | null, effort: (input.effort || null) as "M" | null, assigneeId: input.assigneeId || null,
   }).returning({ id: tickets.id, key: tickets.key });
   return row;
@@ -124,11 +128,12 @@ export async function listProjects(actor: Actor) {
     .from(projects).innerJoin(accounts, eq(accounts.id, projects.accountId)).where(scope).orderBy(asc(accounts.name), asc(projects.name));
   const ids = rows.map((r) => r.id);
   const members = ids.length ? await db.select({ projectId: projectMembers.projectId, name: users.name }).from(projectMembers).innerJoin(users, eq(users.id, projectMembers.userId)).where(inArray(projectMembers.projectId, ids)) : [];
-  const ticketRows = ids.length ? await db.select({ projectId: tickets.projectId, status: tickets.status, needId: needs.id, needTitle: needs.title }).from(tickets).innerJoin(needs, eq(needs.id, tickets.needId)).where(inArray(tickets.projectId, ids)) : [];
+  const ticketRows = ids.length ? await db.select({ projectId: tickets.projectId, stage: projectStatuses.stage, needId: needs.id, needTitle: needs.title }).from(tickets)
+    .innerJoin(projectStatuses, eq(projectStatuses.id, tickets.statusId)).innerJoin(needs, eq(needs.id, tickets.needId)).where(inArray(tickets.projectId, ids)) : [];
   return rows.map((p) => {
     const t = ticketRows.filter((x) => x.projectId === p.id);
     const linked = new Map(t.map((x) => [x.needId, x.needTitle]));
-    return { ...p, team: members.filter((m) => m.projectId === p.id).map((m) => m.name), openTickets: t.filter((x) => x.status !== "released").length, needs: [...linked].map(([id, title]) => ({ id, title })) };
+    return { ...p, team: members.filter((m) => m.projectId === p.id).map((m) => m.name), openTickets: t.filter((x) => x.stage !== "done").length, needs: [...linked].map(([id, title]) => ({ id, title })) };
   });
 }
 

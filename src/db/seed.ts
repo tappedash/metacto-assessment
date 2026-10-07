@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { loadEnv } from "@/lib/env-loader";
 import { getAi } from "@/ai";
 import { closeDb, getDb } from "./client";
+import { createDefaultWorkflow, DEFAULT_WORKFLOW, projectWorkflow } from "@/domain/workflow";
 import * as s from "./schema";
 
 // Demo data mirroring the prototypes: two staffed clients, four projects, five
@@ -46,7 +47,7 @@ async function main() {
   console.log(`Seeding with AI_PROVIDER embeddings: ${embeddings.provider} (${embeddings.model})`);
 
   await db.execute(sql`TRUNCATE accounts, users, staffing, strategic_goals, needs, requests, supports,
-    decisions, status_updates, projects, project_members, tickets RESTART IDENTITY CASCADE`);
+    decisions, status_updates, projects, project_statuses, project_members, tickets RESTART IDENTITY CASCADE`);
 
   const [northwind, contoso, fabrikam, tailspin, alpine, bluebird, cedar] = await db.insert(s.accounts).values([
     { name: "Northwind Logistics", tier: "Mid-market", segment: "Logistics", contractValue: 420_000 },
@@ -139,6 +140,22 @@ async function main() {
     { accountId: contoso.id, name: "Identity Modernization", status: "active" },
     { accountId: contoso.id, name: "Compliance Reporting", status: "planning" },
   ]).returning();
+  // Ticket workflows are configured per project. Two show custom flows; the rest use the default.
+  await createDefaultWorkflow(db, rm.id, [
+    { name: "Backlog", stage: "backlog" }, { name: "Planned", stage: "planned" },
+    { name: "In Development", stage: "in_progress" }, { name: "In QA", stage: "in_progress" }, { name: "Released", stage: "done" },
+  ]);
+  await createDefaultWorkflow(db, im.id, [
+    { name: "Backlog", stage: "backlog" }, { name: "Planned", stage: "planned" }, { name: "Build", stage: "in_progress" },
+    { name: "Security review", stage: "in_progress" }, { name: "UAT", stage: "in_progress" },
+    { name: "Client sign-off", stage: "in_progress" }, { name: "Live", stage: "done" },
+  ]);
+  await createDefaultWorkflow(db, ca.id, DEFAULT_WORKFLOW);
+  await createDefaultWorkflow(db, cr.id, DEFAULT_WORKFLOW);
+  const statusIds = new Map<string, string>();
+  for (const p of [rm, ca, im, cr]) for (const st of await projectWorkflow(p.id)) statusIds.set(`${p.id}:${st.name}`, st.id);
+  const status = (projectId: string, name: string) => statusIds.get(`${projectId}:${name}`)!;
+
   await db.insert(s.projectMembers).values([
     { projectId: rm.id, userId: ravi.id }, { projectId: rm.id, userId: mia.id },
     { projectId: ca.id, userId: mia.id }, { projectId: ca.id, userId: jo.id },
@@ -146,14 +163,14 @@ async function main() {
     { projectId: cr.id, userId: ravi.id },
   ]);
   await db.insert(s.tickets).values([
-    { key: "T-101", projectId: rm.id, needId: need.export.id, title: "CSV export for dashboard reports", status: "planned", priority: "P1", effort: "M", assigneeId: ravi.id },
-    { key: "T-102", projectId: rm.id, needId: need.export.id, title: "Google Sheets connector spike", status: "backlog", priority: "P2", effort: "L", assigneeId: mia.id },
-    { key: "T-103", projectId: cr.id, needId: need.export.id, title: "Monthly shipment report CSV for audits", status: "in_development", priority: "P1", effort: "S", assigneeId: ravi.id },
-    { key: "T-104", projectId: im.id, needId: need.sso.id, title: "SAML SSO for the admin console", status: "in_development", priority: "P1", effort: "L", assigneeId: ravi.id },
-    { key: "T-105", projectId: im.id, needId: need.sso.id, title: "Okta SCIM user provisioning", status: "backlog", priority: "P2", effort: "M", assigneeId: jo.id },
-    { key: "T-106", projectId: cr.id, needId: need.export.id, title: "Audit log export", status: "released", priority: "P2", effort: "S", assigneeId: ravi.id },
-    { key: "T-107", projectId: ca.id, needId: need.rates.id, title: "Bulk rate import from CSV", status: "backlog", priority: "P2", effort: "M", assigneeId: mia.id },
-    { key: "T-108", projectId: ca.id, needId: need.delays.id, title: "SLA breach alert prototype", status: "backlog", priority: "P3", effort: "S", assigneeId: jo.id },
+    { key: "T-101", projectId: rm.id, needId: need.export.id, title: "CSV export for dashboard reports", statusId: status(rm.id, "Planned"), priority: "P1", effort: "M", assigneeId: ravi.id },
+    { key: "T-102", projectId: rm.id, needId: need.export.id, title: "Google Sheets connector spike", statusId: status(rm.id, "Backlog"), priority: "P2", effort: "L", assigneeId: mia.id },
+    { key: "T-103", projectId: cr.id, needId: need.export.id, title: "Monthly shipment report CSV for audits", statusId: status(cr.id, "In Development"), priority: "P1", effort: "S", assigneeId: ravi.id },
+    { key: "T-104", projectId: im.id, needId: need.sso.id, title: "SAML SSO for the admin console", statusId: status(im.id, "Security review"), priority: "P1", effort: "L", assigneeId: ravi.id },
+    { key: "T-105", projectId: im.id, needId: need.sso.id, title: "Okta SCIM user provisioning", statusId: status(im.id, "Backlog"), priority: "P2", effort: "M", assigneeId: jo.id },
+    { key: "T-106", projectId: cr.id, needId: need.export.id, title: "Audit log export", statusId: status(cr.id, "Released"), priority: "P2", effort: "S", assigneeId: ravi.id },
+    { key: "T-107", projectId: ca.id, needId: need.rates.id, title: "Bulk rate import from CSV", statusId: status(ca.id, "Backlog"), priority: "P2", effort: "M", assigneeId: mia.id },
+    { key: "T-108", projectId: ca.id, needId: need.delays.id, title: "SLA breach alert prototype", statusId: status(ca.id, "Backlog"), priority: "P3", effort: "S", assigneeId: jo.id },
   ]);
 
   await db.insert(s.statusUpdates).values({
