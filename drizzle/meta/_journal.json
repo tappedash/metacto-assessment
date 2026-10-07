@@ -29,6 +29,13 @@
       "when": 1791389354950,
       "tag": "0003_tickets_use_project_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791395127276,
+      "tag": "0004_attachments_and_ai_context",
+      "breakpoints": true
     }
   ]
 }

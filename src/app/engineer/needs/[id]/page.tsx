@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, NeedStatus, TicketStatus } from "@/components/ui";
+import { EvidenceFiles } from "@/components/evidence-files";
+import { attachmentsForRequests } from "@/domain/attachments";
 import { getNeed, needEvidence, needSignals, needTickets } from "@/domain/needs";
 import { canViewAccountEvidence } from "@/domain/permissions";
 import { requireActor } from "@/domain/session";
@@ -16,6 +18,8 @@ export default async function EngineerNeedPage({ params }: { params: Promise<{ i
   if (!need) notFound();
   const [evidence, signals, tickets] = await Promise.all([needEvidence(id, actor), needSignals([id]), needTickets(id)]);
   const s = signals.get(id)!;
+  // Only files from requests the engineer may see (staffed accounts).
+  const files = await attachmentsForRequests(evidence.visible.map((e) => e.id));
   const visibleTickets = tickets.filter((t) => canViewAccountEvidence(actor, t.accountId));
   const hiddenTickets = tickets.length - visibleTickets.length;
 
@@ -36,6 +40,7 @@ export default async function EngineerNeedPage({ params }: { params: Promise<{ i
               <div className="item" key={e.id}>
                 <p className="muted">{e.label} · {e.accountName} · {e.submittedBy === actor.name ? "logged by you" : e.onBehalf ? `logged by ${e.submittedBy}` : "client"}</p>
                 <p className="quote">"{e.title}"{e.why ? ` ${e.why}` : ""}</p>
+                <EvidenceFiles files={files.get(e.id)} />
               </div>
             ))}
             {evidence.hiddenCount > 0 && (

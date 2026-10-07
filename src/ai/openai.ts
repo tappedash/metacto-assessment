@@ -12,11 +12,21 @@ export class OpenAILanguageModel implements LanguageModel {
   constructor(private readonly client: OpenAI, readonly model: string, private readonly recordFixtures = false) {}
 
   async generateStructured<T>(task: StructuredTask<T>, options?: CallOptions): Promise<T> {
+    const text = JSON.stringify(task.input);
+    const input = task.images?.length
+      ? [{
+          role: "user" as const,
+          content: [
+            { type: "input_text" as const, text },
+            ...task.images.map((img) => ({ type: "input_image" as const, detail: "auto" as const, image_url: `data:${img.mimeType};base64,${img.dataBase64}` })),
+          ],
+        }]
+      : text;
     const response = await this.client.responses.parse(
       {
         model: this.model,
         instructions: task.instructions,
-        input: JSON.stringify(task.input),
+        input,
         text: { format: zodTextFormat(task.schema as any, task.name) },
       },
       { signal: options?.signal },

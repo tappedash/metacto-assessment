@@ -125,3 +125,102 @@ registerMockHandler(DRAFT_UPDATE, (input) => {
     body: `Thanks for telling us about "${need.title}". It is now ${statusLabel.toLowerCase()}.\n\n${rationale}\n\nWe'll keep you posted as it progresses.`,
   };
 });
+
+// ---------- attachments: "AI reviewed your attachment" ----------
+export const SUMMARIZE_ATTACHMENT = "summarize_attachment";
+export const AttachmentSummary = z.object({ summary: z.string(), terms: z.array(z.string()) });
+export type AttachmentSummary = z.infer<typeof AttachmentSummary>;
+export const SUMMARIZE_ATTACHMENT_INSTRUCTIONS = `A customer attached a file to their product feedback. In ONE sentence starting with
+"This document appears to describe", "This spreadsheet appears to show" or "This screenshot appears to show",
+say what it shows about how they work. Then list up to 6 domain terms from it (e.g. report names, tools).
+Plain language. Never mention AI, models, OCR or how the file was read.`;
+
+const KIND_NOUN: Record<string, string> = { pdf: "document", document: "document", spreadsheet: "spreadsheet", image: "screenshot", text: "note" };
+
+function firstSentence(text: string): string {
+  const s = text.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s/)[0] ?? "";
+  return s.length > 180 ? s.slice(0, 177) + "…" : s;
+}
+
+/** Capitalised words and known product terms that recur in a text, for "terms" chips. */
+export function keyTerms(text: string, limit = 6): string[] {
+  const counts = new Map<string, number>();
+  for (const m of text.matchAll(/\b([A-Z][A-Za-z]{2,}|CSV|ERP|KPI|SLA|BI|PDF)\b/g)) {
+    const w = m[1];
+    if (/^(The|This|That|Our|We|They|Today|Every|Each|When|What|With|From|And|For|Yes|No|True|False)$/.test(w)) continue;
+    counts.set(w, (counts.get(w) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([w]) => w);
+}
+
+registerMockHandler(SUMMARIZE_ATTACHMENT, (input) => {
+  const { filename, kind, text } = input as { filename: string; kind: string; text: string | null };
+  const noun = KIND_NOUN[kind] ?? "file";
+  if (!text) {
+    return { summary: `This ${noun} (${filename}) was attached. Describe what it shows so we can take it into account.`, terms: [] };
+  }
+  if (kind === "spreadsheet") {
+    const header = text.split("\n").find((l) => l.includes(",") && !l.startsWith("#")) ?? "";
+    const cols = header.split(",").map((c) => c.trim()).filter(Boolean).slice(0, 5);
+    const rows = text.split("\n").filter((l) => l.includes(",")).length - 1;
+    return { summary: `This spreadsheet appears to show ${Math.max(rows, 0)} rows tracking ${cols.join(", ") || "data"}.`, terms: keyTerms(text) };
+  }
+  return { summary: `This ${noun} appears to describe: ${firstSentence(text)}`, terms: keyTerms(text) };
+});
+
+// ---------- understanding: description + details + files -> the customer's problem ----------
+export const UNDERSTAND_FEEDBACK = "understand_feedback";
+export const Understanding = z.object({
+  summary: z.string(),
+  title: z.string(),
+  goal: z.string(),
+  workaround: z.string(),
+  impact: z.string(),
+  terms: z.array(z.string()),
+  question: z.string(),
+});
+export type Understanding = z.infer<typeof Understanding>;
+export const UNDERSTAND_FEEDBACK_INSTRUCTIONS = `A customer is sharing product feedback: a short description, optional details, and
+optional attachments (with what each attachment shows). Use ALL of it together.
+- summary: one sentence starting "From your <sources>, it looks like ..." describing the underlying problem,
+  ending with "Is that the main problem?".
+- title: a short request title in the customer's words.
+- goal: what they are trying to accomplish. workaround: what they do today. impact: the pain (time, errors, risk).
+  Use "" when the material doesn't say.
+- terms: up to 6 domain terms.
+- question: if goal or workaround is unclear, ONE friendly question to ask; otherwise "".
+Never invent facts. Never mention AI, models, OCR, embeddings or matching.`;
+
+function sentences(text: string): string[] {
+  // Documents often use line breaks instead of full stops; treat both as boundaries.
+  return text.split(/\n+|(?<=[.!?])\s+/).map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 8);
+}
+/** First sentence matching the strongest pattern, falling back to weaker ones. */
+const pick = (all: string[], ...patterns: RegExp[]) => {
+  for (const re of patterns) {
+    const hit = all.find((s) => re.test(s));
+    if (hit) return hit;
+  }
+  return "";
+};
+
+registerMockHandler(UNDERSTAND_FEEDBACK, (input) => {
+  const { title, details, attachments } = input as {
+    title: string; details: string; attachments: { filename: string; kind: string; summary: string; excerpt: string }[];
+  };
+  const all = sentences([details, ...attachments.map((a) => a.excerpt)].join(" "));
+  const goal = pick(all, /\b(so that|so we can|in order to|trying to|need to|want to)\b/i, /\b(reconcile|share|report)\b/i);
+  const workaround = pick(all, /\b(today|currently|by hand|manually|manual)\b/i, /\b(copy|copies|spreadsheet|export)\b/i);
+  const impact = pick(all, /\b(hours?|minutes|errors?|mistakes?|delays?|risk|blocks?)\b/i, /\b(slow|every (day|week|monday))\b/i);
+  const sources = [details.trim() || title.trim() ? "description" : "", ...attachments.map((a) => KIND_NOUN[a.kind] ?? "file")].filter(Boolean);
+  const from = sources.length > 1 ? `${sources.slice(0, -1).join(", ")} and ${sources.at(-1)}` : sources[0] ?? "feedback";
+  const core = (goal || workaround || title || "you need a change to how this works").replace(/[.!?]$/, "");
+  const lower = core.charAt(0).toLowerCase() + core.slice(1);
+  return {
+    summary: `From your ${from}, it looks like ${lower}. Is that the main problem?`,
+    title: title.trim() || (attachments[0]?.filename.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ") ?? "Feedback"),
+    goal, workaround, impact,
+    terms: keyTerms([title, details, ...attachments.map((a) => a.excerpt)].join(" ")),
+    question: goal || workaround ? "" : "What are you trying to get done, and how do you handle it today?",
+  };
+});

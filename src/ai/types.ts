@@ -12,12 +12,19 @@ export interface EmbeddingProvider {
   embed(texts: string[], options?: CallOptions): Promise<number[][]>;
 }
 
+export interface ImageInput {
+  mimeType: string;
+  dataBase64: string;
+}
+
 export interface StructuredTask<T> {
   /** Stable task name, e.g. "classify_match". Used as the schema name and fixture key. */
   name: string;
   instructions: string;
   input: unknown;
   schema: z.ZodType<T>;
+  /** Optional images (e.g. screenshots) for providers that can look at them. */
+  images?: ImageInput[];
 }
 
 export interface TextTask {

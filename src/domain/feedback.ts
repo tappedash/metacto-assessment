@@ -2,10 +2,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
 import { needs, projects, requests, supports, users } from "@/db/schema";
+import { linkAttachments, ownedAttachments, toView, type AttachmentView } from "./attachments";
 import { getEnv } from "@/lib/env";
 import {
   DRAFT_NEED, DRAFT_NEED_INSTRUCTIONS, DraftNeed, FOLLOW_UP, FOLLOW_UP_INSTRUCTIONS, FollowUp,
-  REFINE_NEED, REFINE_NEED_INSTRUCTIONS, RefinedNeed,
+  REFINE_NEED, REFINE_NEED_INSTRUCTIONS, RefinedNeed, UNDERSTAND_FEEDBACK, UNDERSTAND_FEEDBACK_INSTRUCTIONS, Understanding,
 } from "./ai-tasks";
 import { matchRequest } from "./matching";
 import type { Actor } from "./permissions";
@@ -55,6 +56,37 @@ export async function checkFeedback(input: FeedbackInput, opts: { skipFollowUp?:
   };
 }
 
+// ---------- client intake with files: understand -> customer confirms -> match ----------
+
+export interface ConfirmedContext {
+  summary: string;
+  goal: string;
+  workaround: string;
+  impact: string;
+  terms: string[];
+}
+
+/** The customer's own words for the problem, used for matching and as evidence. */
+export function contextToWhy(ctx: ConfirmedContext): string {
+  return [ctx.goal, ctx.workaround && `Today: ${ctx.workaround}`, ctx.impact && `Impact: ${ctx.impact}`]
+    .filter(Boolean).map((s) => s.trim().replace(/([^.!?])$/, "$1.")).join(" ");
+}
+
+/** AI reads the description, details and attachments together and proposes the underlying problem. */
+export async function understandFeedback(actor: Actor, input: { title: string; details: string; attachmentIds: string[] }): Promise<{ understanding: Understanding; attachments: AttachmentView[] }> {
+  const files = await ownedAttachments(actor, input.attachmentIds, { unlinkedOnly: true });
+  if (!input.title.trim() && !input.details.trim() && !files.length) throw new Error("Describe what you need or attach a file.");
+  const views = files.map(toView);
+  const understanding = await getAi().llm.generateStructured({
+    name: UNDERSTAND_FEEDBACK, instructions: UNDERSTAND_FEEDBACK_INSTRUCTIONS, schema: Understanding,
+    input: {
+      title: input.title.trim(), details: input.details.trim(),
+      attachments: files.map((f, i) => ({ filename: f.filename, kind: f.kind, summary: views[i].summary ?? "", excerpt: (f.extractedText ?? "").slice(0, 3000) })),
+    },
+  });
+  return { understanding, attachments: views };
+}
+
 export interface SubmitInput extends FeedbackInput {
   /** "support": the submitter confirmed the AI match. "different": send to PM triage. */
   choice: "support" | "different";
@@ -64,6 +96,8 @@ export interface SubmitInput extends FeedbackInput {
   reason: string;
   accountId?: string; // engineers: the client the feedback is for
   projectId?: string; // engineers: the engagement
+  context?: ConfirmedContext; // clients: the AI understanding they confirmed or corrected
+  attachmentIds?: string[];
 }
 
 export interface SubmitOutcome {
@@ -101,10 +135,12 @@ export async function submitFeedback(actor: Actor, input: SubmitInput): Promise<
   }
   const confirmed = input.choice === "support" && needId !== null && (input.relation === "same" || input.relation === "related");
 
-  const [embedding] = await getAi().embeddings.embed([`${input.title}\n${input.why}`]);
+  // Clients confirm an AI understanding; their corrected words become the evidence text.
+  const why = (input.context && contextToWhy(input.context)) || input.why;
+  const [embedding] = await getAi().embeddings.embed([`${input.title}\n${why}`]);
   const [request] = await db.insert(requests).values({
     title: input.title.trim(),
-    why: input.why.trim(),
+    why: why.trim(),
     accountId,
     projectId,
     submittedBy: actor.id,
@@ -114,8 +150,10 @@ export async function submitFeedback(actor: Actor, input: SubmitInput): Promise<
     linkConfidence: input.confidence,
     linkReason: input.choice === "different" ? `Submitter said it is different. AI: ${input.reason}` : input.reason,
     linkState: confirmed ? "confirmed" : "triage",
+    aiContext: input.context ?? null,
     embedding,
   }).returning({ id: requests.id });
+  await linkAttachments(actor, input.attachmentIds ?? [], request.id);
 
   if (confirmed && needId) {
     if (actor.role === "client") await addSupport(actor.id, needId);

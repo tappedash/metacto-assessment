@@ -2,6 +2,8 @@ import { asc, desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Back, NeedStatus, Notice, TicketStatus, param, type SearchParams } from "@/components/ui";
+import { EvidenceFiles } from "@/components/evidence-files";
+import { attachmentsForRequests } from "@/domain/attachments";
 import { getDb } from "@/db/client";
 import { accounts, decisions, needs, projects, users } from "@/db/schema";
 import { RUBRIC_KEYS } from "@/domain/ai-tasks";
@@ -47,6 +49,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
     engineers(),
   ]);
   const signals = signalMap.get(id)!;
+  const files = await attachmentsForRequests(evidence.all.map((e) => e.id));
 
   // AI Brief + rubric on demand (cached until evidence changes).
   let insights: NeedInsights | null = null;
@@ -134,6 +137,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
             <div className="item" key={e.id} id={`ev-${e.label}`}>
               <p className="muted">{e.label} · {e.accountName} · {e.onBehalf ? `logged by engineer ${e.submittedBy}` : e.submittedBy} · {day(e.createdAt)}{e.linkType === "related" ? " · related" : ""}</p>
               <p className="quote">"{e.title}"{e.why ? ` ${e.why}` : ""}</p>
+              <EvidenceFiles files={files.get(e.id)} />
             </div>
           ))}
           {!evidence.all.length && <div className="item muted">No confirmed evidence yet.</div>}

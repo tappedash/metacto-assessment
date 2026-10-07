@@ -1,6 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { NeedStatus, PageHead } from "@/components/ui";
+import { EvidenceFiles } from "@/components/evidence-files";
+import { attachmentsForRequests } from "@/domain/attachments";
 import { getDb } from "@/db/client";
 import { needs, requests, supports } from "@/db/schema";
 import { requireActor } from "@/domain/session";
@@ -16,6 +18,7 @@ export default async function ActivityPage() {
     db.select({ id: needs.id, title: needs.title, status: needs.status }).from(supports).innerJoin(needs, eq(needs.id, supports.needId))
       .where(eq(supports.userId, actor.id)).orderBy(desc(supports.createdAt)),
   ]);
+  const files = await attachmentsForRequests(mine.map((r) => r.id));
   const linkedIds = new Set(mine.filter((r) => r.linkState === "confirmed").map((r) => r.needId));
   const onlySupported = supported.filter((s) => !linkedIds.has(s.id));
 
@@ -33,6 +36,7 @@ export default async function ActivityPage() {
               ) : (
                 <p className="muted">New request · waiting for product review</p>
               )}
+              <EvidenceFiles files={files.get(r.id)} />
             </div>
             {r.linkState === "confirmed" && r.needStatus ? <NeedStatus status={r.needStatus} /> : <NeedStatus status="under_review" />}
           </div>

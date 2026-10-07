@@ -525,3 +525,17 @@ details > summary { cursor: pointer; }
   .board.dyn { grid-template-columns: 1fr; }
   .wf-row { grid-template-columns: 1fr; }
 }
+
+/* ---------- attachments + AI understanding ---------- */
+.i-file { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3C/svg%3E"); }
+.i-sparkle { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Cpath d='M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z'/%3E%3C/svg%3E"); }
+.dropzone { display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; padding: 1.25rem; border: 1px dashed var(--pewter); border-radius: var(--radius); background: var(--cloud); color: var(--ink); }
+.dropzone.over { border-color: var(--orange); background: var(--white); }
+.dropzone .ico { width: 22px; height: 22px; color: var(--ink-light); }
+.attach-list { list-style: none; margin: .75rem 0 0; padding: 0; display: grid; gap: .5rem; }
+.attach { border: 1px solid var(--mist); border-radius: .6rem; background: var(--white); padding: .6rem .75rem; }
+.attach-head { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; }
+.attach-head .ico { color: var(--ink-light); }
+.attach-name { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.attach-head .btn-link { margin-left: auto; }
+.attach-ai { margin-top: .45rem; padding-top: .45rem; border-top: 1px solid var(--mist); font-size: 13px; color: var(--ink); }

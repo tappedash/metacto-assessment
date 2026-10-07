@@ -88,7 +88,26 @@ export const requests = pgTable("requests", {
   linkConfidence: real("link_confidence"),
   linkReason: text("link_reason"),
   linkState: linkState("link_state"),
+  // What the customer confirmed after AI read their description and files:
+  // { summary, goal, workaround, impact, terms[] }.
+  aiContext: jsonb("ai_context"),
   embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+  ...timestamps,
+});
+
+// Files customers attach to feedback (or share with the Assistant). Stored on local disk
+// for the MVP; only the owner, the PM and engineers staffed on the account can open them.
+export const attachments = pgTable("attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id),
+  requestId: uuid("request_id").references(() => requests.id, { onDelete: "set null" }),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  kind: text("kind").notNull(), // pdf | document | spreadsheet | image | text
+  sizeBytes: integer("size_bytes").notNull(),
+  storagePath: text("storage_path").notNull(),
+  extractedText: text("extracted_text"),
+  aiSummary: jsonb("ai_summary"), // { summary, terms[] } shown as "AI reviewed your attachment"
   ...timestamps,
 });
 

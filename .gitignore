@@ -7,3 +7,6 @@ next-env.d.ts
 .env.local
 .DS_Store
 coverage/
+
+# uploaded files (local MVP storage)
+storage/
