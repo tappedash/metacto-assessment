@@ -50,6 +50,13 @@
       "when": 1791398096985,
       "tag": "0006_ticket_tracking_and_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791400816918,
+      "tag": "0007_config_integrations_notifications",
+      "breakpoints": true
     }
   ]
 }

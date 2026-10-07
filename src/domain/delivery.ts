@@ -3,8 +3,10 @@ import { getDb } from "@/db/client";
 import { accounts, needs, projectMembers, projects, projectStatuses, statusUpdates, tickets, users } from "@/db/schema";
 import { draftStatusUpdate } from "./decisions";
 import { allowedTicketMoves, canViewAccountEvidence, type Actor } from "./permissions";
-import { recordStatusChange } from "./tracking";
-import { projectWorkflow } from "./workflow";
+import { hrefs, notify, ticketPeople } from "./notifications";
+import { getSettings } from "./settings";
+import { PUBLIC_STATUS, publicStatusOf, recordStatusChange } from "./tracking";
+import { projectWorkflow, type StatusDef } from "./workflow";
 
 // Delivery layer: Client (account) -> Project -> Ticket. Each ticket links to the
 // Customer Need that explains why it is being built.
@@ -79,6 +81,7 @@ export async function moveTicket(actor: Actor, ticketId: string, toStatusId: str
   await db.update(tickets).set({ statusId: target.id }).where(eq(tickets.id, ticketId));
   const from = workflow.find((s) => s.id === ticket.statusId)!;
   await recordStatusChange(db, { ticketId, actorId: actor.id, from, to: target, note: options.note });
+  await notifyStatusChange(actor, ticketId, from, target);
 
   const [need] = await db.select().from(needs).where(eq(needs.id, ticket.needId));
   const siblings = await db.select({ stage: projectStatuses.stage }).from(tickets)
@@ -91,6 +94,48 @@ export async function moveTicket(actor: Actor, ticketId: string, toStatusId: str
     await draftStatusUpdate(need.id, next, next === "released" ? "All delivery work for this is now released." : "Engineering has started building this.");
   }
   return { needStatusChanged: next, status: target.name };
+}
+
+/** PM / Need owner and the assignee hear about every move; customers only about public changes they opted into. */
+async function notifyStatusChange(actor: Actor, ticketId: string, from: StatusDef, to: StatusDef) {
+  const people = await ticketPeople(ticketId);
+  const released = to.stage === "done" && from.stage !== "done";
+  await notify({
+    event: released ? "ticket.released" : "ticket.status", entity: { type: "ticket", id: ticketId }, actorId: actor.id,
+    recipients: [...people.pms, people.assigneeId],
+    title: released ? `${people.key} released: ${people.title}` : `${people.key} moved to ${to.name}`,
+    body: `${people.key} ${people.title} moved from ${from.name} to ${to.name}.`, href: hrefs.ticket(ticketId),
+  });
+  const before = publicStatusOf(from), after = publicStatusOf(to);
+  if (after && after !== before && (await getSettings()).customerNotify[after]) {
+    await notify({
+      event: "ticket.status", entity: { type: "ticket", id: ticketId }, actorId: actor.id, recipients: people.customers,
+      title: `${people.title} moved to ${PUBLIC_STATUS[after].label}`, body: `${people.title} is now ${PUBLIC_STATUS[after].label}.`, href: hrefs.ticket(ticketId),
+    });
+  }
+}
+
+/** PM changes who works on a ticket or how urgent it is; the people involved are told. */
+export async function updateTicket(actor: Actor, ticketId: string, input: { assigneeId: string | null; priority: string | null }) {
+  if (actor.role !== "pm") throw new Error("Only the Product Manager assigns and prioritises tickets");
+  const db = getDb();
+  const [ticket] = await db.select().from(tickets).where(eq(tickets.id, ticketId));
+  if (!ticket) throw new Error("Ticket not found");
+  const priority = (["P0", "P1", "P2", "P3"].includes(input.priority ?? "") ? input.priority : null) as "P1" | null;
+  if (input.assigneeId) {
+    const [engineer] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, input.assigneeId), eq(users.role, "engineer"), eq(users.active, true)));
+    if (!engineer) throw new Error("Assign an active engineer");
+  }
+  await db.update(tickets).set({ assigneeId: input.assigneeId, priority }).where(eq(tickets.id, ticketId));
+  const people = await ticketPeople(ticketId);
+  if (input.assigneeId && input.assigneeId !== ticket.assigneeId) {
+    await notify({ event: "ticket.assigned", entity: { type: "ticket", id: ticketId }, actorId: actor.id, recipients: [input.assigneeId],
+      title: `${ticket.key} assigned to you: ${ticket.title}`, body: `You're now the assignee of ${ticket.key} ${ticket.title}.`, href: hrefs.ticket(ticketId) });
+  }
+  if (priority !== ticket.priority) {
+    await notify({ event: "ticket.priority", entity: { type: "ticket", id: ticketId }, actorId: actor.id, recipients: [...people.pms, people.assigneeId],
+      title: `${ticket.key} priority: ${priority ?? "none"}`, body: `${ticket.key} ${ticket.title} priority changed from ${ticket.priority ?? "none"} to ${priority ?? "none"}.`, href: hrefs.ticket(ticketId) });
+  }
 }
 
 export async function nextTicketKey(): Promise<string> {
@@ -109,6 +154,10 @@ export async function createTicket(actor: Actor, input: { needId: string; projec
     key, title: input.title.trim(), needId: input.needId, projectId: input.projectId, statusId: start.id,
     priority: (input.priority || null) as "P1" | null, effort: (input.effort || null) as "M" | null, assigneeId: input.assigneeId || null,
   }).returning({ id: tickets.id, key: tickets.key });
+  if (input.assigneeId) {
+    await notify({ event: "ticket.created", entity: { type: "ticket", id: row.id }, actorId: actor.id, recipients: [input.assigneeId],
+      title: `New ticket for you: ${row.key} ${input.title.trim()}`, body: `${row.key} ${input.title.trim()} was created and assigned to you.`, href: hrefs.ticket(row.id) });
+  }
   return row;
 }
 

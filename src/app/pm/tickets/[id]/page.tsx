@@ -4,12 +4,12 @@ import { Back, Notice, TicketStatus, param, type SearchParams } from "@/componen
 import { TicketMove } from "@/components/ticket-move";
 import { ReworkReview } from "@/components/rework-review";
 import { CommentForm, TeamTimeline } from "@/components/ticket-timeline";
-import { getTicket } from "@/domain/delivery";
+import { engineers, getTicket } from "@/domain/delivery";
 import { requireActor } from "@/domain/session";
 import { PUBLIC_STATUS, publicStatusOf, teamTimeline } from "@/domain/tracking";
 import { reworkRequests } from "@/domain/validation";
 import { projectWorkflow } from "@/domain/workflow";
-import { addTicketCommentAction, moveTicketAction, reviewReworkAction } from "../../actions";
+import { addTicketCommentAction, moveTicketAction, publishUpdateAction, reviewReworkAction, updateTicketAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ export default async function PmTicketPage({ params, searchParams }: { params: P
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [workflow, events, reworks] = await Promise.all([projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id })]);
+  const [workflow, events, reworks, people] = await Promise.all([projectWorkflow(ticket.projectId), teamTimeline(id), reworkRequests(actor, { ticketId: id }), engineers()]);
   const current = workflow.find((s) => s.id === ticket.statusId)!;
   const pub = publicStatusOf(current);
 
@@ -40,9 +40,24 @@ export default async function PmTicketPage({ params, searchParams }: { params: P
         <div><dt>Customers see</dt><dd>{pub ? PUBLIC_STATUS[pub].label : "Nothing yet (Backlog)"}</dd></div>
         <div><dt>Assignee</dt><dd>{ticket.assignee ?? "Unassigned"}</dd></div>
       </dl>
-      <ReworkReview reworks={reworks} action={reviewReworkAction.bind(null, id)} />
+      <form className="toolbar section" action={updateTicketAction.bind(null, id)} aria-label="Assignment and priority">
+        <label className="field">Assignee
+          <select name="assigneeId" defaultValue={ticket.assigneeId ?? ""}>
+            <option value="">Unassigned</option>
+            {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
+        <label className="field">Priority
+          <select name="priority" defaultValue={ticket.priority ?? ""}>
+            <option value="">None</option>
+            {["P0", "P1", "P2", "P3"].map((p) => <option key={p}>{p}</option>)}
+          </select>
+        </label>
+        <button className="btn btn-ghost btn-sm" type="submit">Save</button>
+      </form>
+      <ReworkReview reworks={reworks} action={reviewReworkAction.bind(null, id)} canFollowUp />
       <div className="section grid split">
-        <div className="card"><h2 style={{ marginBottom: ".9rem" }}>Updates</h2><TeamTimeline events={events} /></div>
+        <div className="card"><h2 style={{ marginBottom: ".9rem" }}>Updates</h2><TeamTimeline events={events} publish={publishUpdateAction.bind(null, id)} /></div>
         <div className="card"><CommentForm action={addTicketCommentAction.bind(null, id)} /></div>
       </div>
     </>

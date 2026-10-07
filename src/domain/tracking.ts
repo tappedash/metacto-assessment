@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { needs, projects, projectStatuses, requests, statusUpdates, supports, ticketEvents, tickets, ticketValidations, users } from "@/db/schema";
+import { hrefs, notify, ticketPeople } from "./notifications";
 import { canViewAccountEvidence, type Actor } from "./permissions";
 
 // Customer-facing delivery tracking. Customers never see internal status names, estimates,
@@ -41,6 +42,7 @@ export async function recordStatusChange(db: Db, input: {
     ticketId: input.ticketId, kind: "status", authorId: input.actorId, body: input.note ?? null,
     fromStatus: input.from.name, toStatus: input.to.name, publicStatus: after,
     visibility: after && after !== before ? "customer" : "internal",
+    publishedAt: after && after !== before ? new Date() : null,
   });
 }
 
@@ -58,18 +60,60 @@ export async function canCollaborate(actor: Actor, ticketId: string): Promise<bo
   return Boolean(accountId && canViewAccountEvidence(actor, accountId));
 }
 
+/**
+ * Team update on a ticket. Internal by default. Customer-visible updates from the PM are
+ * published at once; an engineer's wait for the PM to approve them, so customers only ever
+ * read updates the PM has signed off.
+ */
 export async function addComment(actor: Actor, ticketId: string, body: string, visibility: "internal" | "customer") {
   if (!(await canCollaborate(actor, ticketId))) throw new Error("Only the PM and engineers on this client can comment");
   const text = body.trim();
   if (!text) throw new Error("Write an update first");
   if (text.length > 2000) throw new Error("Keep updates under 2000 characters");
-  await getDb().insert(ticketEvents).values({ ticketId, kind: "comment", visibility, authorId: actor.id, body: text });
+  const publishNow = visibility === "customer" && actor.role === "pm";
+  await getDb().insert(ticketEvents).values({
+    ticketId, kind: "comment", visibility, authorId: actor.id, body: text,
+    publishedAt: publishNow ? new Date() : null, publishedBy: publishNow ? actor.id : null,
+  });
+  if (visibility !== "customer") return;
+  const people = await ticketPeople(ticketId);
+  if (publishNow) {
+    await notify({ event: "ticket.update_published", entity: { type: "ticket", id: ticketId }, actorId: actor.id, recipients: people.customers,
+      title: `Update on ${people.title}`, body: text, href: hrefs.ticket(ticketId) });
+  } else {
+    await notify({ event: "ticket.update_pending", entity: { type: "ticket", id: ticketId }, actorId: actor.id, recipients: people.pms,
+      title: `${people.key}: customer update waiting for approval`, body: `An engineer wrote a customer-visible update on ${people.key} ${people.title}:\n\n${text}`, href: hrefs.ticket(ticketId) });
+  }
+}
+
+/** PM approves an engineer's customer-visible update; customers following the ticket are told. */
+export async function publishUpdate(actor: Actor, eventId: string) {
+  if (actor.role !== "pm") throw new Error("Only the Product Manager publishes customer updates");
+  const db = getDb();
+  const [event] = await db.select().from(ticketEvents).where(eq(ticketEvents.id, eventId));
+  if (!event || event.kind !== "comment" || event.visibility !== "customer") throw new Error("Update not found");
+  if (event.publishedAt) throw new Error("This update is already published");
+  await db.update(ticketEvents).set({ publishedAt: new Date(), publishedBy: actor.id }).where(eq(ticketEvents.id, eventId));
+  const people = await ticketPeople(event.ticketId);
+  await notify({ event: "ticket.update_published", entity: { type: "ticket", id: event.ticketId }, actorId: actor.id, recipients: [...people.customers, event.authorId],
+    title: `Update on ${people.title}`, body: event.body ?? "", href: hrefs.ticket(event.ticketId) });
+}
+
+/** An engineer asks the PM for a decision; logged internally and sent to the owning PM. */
+export async function requestPmInput(actor: Actor, ticketId: string, question: string) {
+  if (actor.role !== "engineer" || !(await canCollaborate(actor, ticketId))) throw new Error("Only engineers on this client can ask for PM input");
+  const text = question.trim();
+  if (!text) throw new Error("Write your question first");
+  await getDb().insert(ticketEvents).values({ ticketId, kind: "comment", visibility: "internal", authorId: actor.id, body: `PM input requested: ${text}` });
+  const people = await ticketPeople(ticketId);
+  await notify({ event: "ticket.pm_input", entity: { type: "ticket", id: ticketId }, actorId: actor.id, recipients: people.pms,
+    title: `${people.key}: input needed`, body: `A question on ${people.key} ${people.title}:\n\n${text}`, href: hrefs.ticket(ticketId) });
 }
 
 /** Full timeline for the team, newest first, with visibility shown on each entry. */
 export async function teamTimeline(ticketId: string) {
   return getDb()
-    .select({ id: ticketEvents.id, kind: ticketEvents.kind, visibility: ticketEvents.visibility, body: ticketEvents.body, fromStatus: ticketEvents.fromStatus, toStatus: ticketEvents.toStatus, publicStatus: ticketEvents.publicStatus, author: users.name, createdAt: ticketEvents.createdAt })
+    .select({ id: ticketEvents.id, kind: ticketEvents.kind, visibility: ticketEvents.visibility, body: ticketEvents.body, fromStatus: ticketEvents.fromStatus, toStatus: ticketEvents.toStatus, publicStatus: ticketEvents.publicStatus, publishedAt: ticketEvents.publishedAt, author: users.name, createdAt: ticketEvents.createdAt })
     .from(ticketEvents).leftJoin(users, eq(users.id, ticketEvents.authorId))
     .where(eq(ticketEvents.ticketId, ticketId)).orderBy(desc(ticketEvents.createdAt));
 }
@@ -118,7 +162,7 @@ export async function customerTickets(actor: Actor, opts: { needId?: string } = 
   const ids = own.map((r) => r.id);
   const latest = ids.length
     ? await db.select({ ticketId: ticketEvents.ticketId, at: ticketEvents.createdAt }).from(ticketEvents)
-      .where(and(inArray(ticketEvents.ticketId, ids), eq(ticketEvents.visibility, "customer"))).orderBy(desc(ticketEvents.createdAt))
+      .where(and(inArray(ticketEvents.ticketId, ids), eq(ticketEvents.visibility, "customer"), isNotNull(ticketEvents.publishedAt))).orderBy(desc(ticketEvents.createdAt))
     : [];
   return {
     tickets: own.map((r) => ({
@@ -139,7 +183,7 @@ export async function customerTicket(actor: Actor, ticketId: string) {
   const timeline = await db
     .select({ id: ticketEvents.id, kind: ticketEvents.kind, body: ticketEvents.body, publicStatus: ticketEvents.publicStatus, author: users.name, authorRole: users.role, createdAt: ticketEvents.createdAt })
     .from(ticketEvents).leftJoin(users, eq(users.id, ticketEvents.authorId))
-    .where(and(eq(ticketEvents.ticketId, ticketId), eq(ticketEvents.visibility, "customer")))
+    .where(and(eq(ticketEvents.ticketId, ticketId), eq(ticketEvents.visibility, "customer"), isNotNull(ticketEvents.publishedAt)))
     .orderBy(asc(ticketEvents.createdAt));
   const validations = await db.select().from(ticketValidations)
     .where(and(eq(ticketValidations.ticketId, ticketId), eq(ticketValidations.userId, actor.id)))
@@ -162,7 +206,7 @@ export async function customerActivity(actor: Actor, limit = 12): Promise<Activi
   const items: ActivityItem[] = [];
   if (mine.length) {
     const events = await db.select({ ticketId: ticketEvents.ticketId, kind: ticketEvents.kind, body: ticketEvents.body, publicStatus: ticketEvents.publicStatus, createdAt: ticketEvents.createdAt })
-      .from(ticketEvents).where(and(inArray(ticketEvents.ticketId, mine.map((t) => t.id)), eq(ticketEvents.visibility, "customer")))
+      .from(ticketEvents).where(and(inArray(ticketEvents.ticketId, mine.map((t) => t.id)), eq(ticketEvents.visibility, "customer"), isNotNull(ticketEvents.publishedAt)))
       .orderBy(desc(ticketEvents.createdAt)).limit(limit);
     for (const e of events) {
       const t = mine.find((x) => x.id === e.ticketId)!;

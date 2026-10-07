@@ -50,7 +50,9 @@ export async function seed({ quiet = false } = {}) {
 
   await db.execute(sql`TRUNCATE accounts, users, staffing, strategic_goals, needs, requests, supports,
     decisions, status_updates, projects, project_statuses, project_members, tickets, attachments,
-    invitations, auth_sessions, auth_accounts, auth_verifications, ticket_events, ticket_validations RESTART IDENTITY CASCADE`);
+    invitations, auth_sessions, auth_accounts, auth_verifications, ticket_events, ticket_validations,
+    notifications, project_integrations, github_activity, workspace_settings RESTART IDENTITY CASCADE`);
+  await db.insert(s.workspaceSettings).values({ id: 1, customerNotify: { planned: true, in_development: true, ready_for_review: true, released: true, rework_decision: true } });
 
   const [northwind, contoso, fabrikam, tailspin, alpine, bluebird, cedar] = await db.insert(s.accounts).values([
     { name: "Northwind Logistics", tier: "Mid-market", segment: "Logistics", contractValue: 420_000 },
@@ -200,14 +202,17 @@ export async function seed({ quiet = false } = {}) {
     steps.map(([from, to, days]) => ({
       ticketId: tid(key).id, kind: "status" as const, authorId: by.id, fromStatus: from, toStatus: to, publicStatus: pub[to],
       visibility: pub[to] && pub[to] !== pub[from] ? ("customer" as const) : ("internal" as const), createdAt: ago(days),
+      publishedAt: pub[to] && pub[to] !== pub[from] ? ago(days) : null,
     }));
-  const note = (key: string, by: { id: string }, visibility: "internal" | "customer", body: string, days: number) =>
-    ({ ticketId: tid(key).id, kind: "comment" as const, authorId: by.id, visibility, body, createdAt: ago(days) });
+  // Customer-visible notes are published unless `pending` (an engineer's update awaiting PM approval).
+  const note = (key: string, by: { id: string }, visibility: "internal" | "customer", body: string, days: number, pending = false) =>
+    ({ ticketId: tid(key).id, kind: "comment" as const, authorId: by.id, visibility, body, createdAt: ago(days), publishedAt: visibility === "customer" && !pending ? ago(days) : null });
   await db.insert(s.ticketEvents).values([
     ...moves("T-101", sam, [["Backlog", "Planned", 6]]),
     note("T-101", sam, "customer", "We're starting with CSV export for every dashboard report; a Google Sheets connection comes after.", 5),
     note("T-101", ravi, "internal", "Report query p95 is ~4s on large accounts; add pagination before export.", 2),
     ...moves("T-103", sam, [["Backlog", "Planned", 12]]), ...moves("T-103", ravi, [["Planned", "In Development", 4]]),
+    note("T-103", ravi, "customer", "The monthly CSV now covers every shipment field your auditors listed; we expect it in UAT next week.", 1, true),
     ...moves("T-104", sam, [["Backlog", "Planned", 30]]), ...moves("T-104", ravi, [["Planned", "Build", 21], ["Build", "Security review", 3]]),
     note("T-104", ravi, "internal", "Pen-test finding on assertion replay; fix before UAT.", 2),
     ...moves("T-106", sam, [["Backlog", "Planned", 40]]), ...moves("T-106", ravi, [["Planned", "In Development", 30], ["In Development", "Released", 8]]),

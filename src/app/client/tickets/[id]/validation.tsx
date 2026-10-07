@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ticketValidations } from "@/db/schema";
 import type { CustomerTicket } from "@/domain/tracking";
 import { looksGoodAction } from "../../actions";
@@ -9,6 +10,7 @@ const day = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: 
 const REWORK_STATE = {
   open: { label: "Under review", chip: "st-review", text: "The team is reviewing what you reported. You'll see their decision here." },
   reopened: { label: "Reopened", chip: "st-dev", text: "The team reopened this to fix what you reported." },
+  follow_up: { label: "Follow-up planned", chip: "st-planned", text: "The team accepted this and planned follow-up work. You can track it under Your deliveries." },
   declined: { label: "Not reopened", chip: "st-notplanned", text: "The team looked into it and isn't reopening this." },
 } as const;
 
@@ -33,6 +35,7 @@ export function Validation({ ticket, validations }: { ticket: CustomerTicket; va
             </div>
             {summary && <p className="muted" style={{ marginTop: ".35rem" }}>{summary}</p>}
             <p style={{ marginTop: ".5rem" }}>{v.resolutionNote ?? st.text}</p>
+            {v.followUpTicketId && <p style={{ marginTop: ".35rem" }}><Link className="btn-link" href={`/client/tickets/${v.followUpTicketId}`}>Track the follow-up work</Link></p>}
           </div>
         );
       })}

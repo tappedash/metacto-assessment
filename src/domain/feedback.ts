@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
-import { needs, projects, requests, supports, users } from "@/db/schema";
+import { accounts, needs, projects, requests, supports, users } from "@/db/schema";
 import { linkAttachments, ownedAttachments, toView, type AttachmentView } from "./attachments";
 import { getEnv } from "@/lib/env";
 import {
@@ -9,6 +9,7 @@ import {
   REFINE_NEED, REFINE_NEED_INSTRUCTIONS, RefinedNeed, UNDERSTAND_FEEDBACK, UNDERSTAND_FEEDBACK_INSTRUCTIONS, Understanding,
 } from "./ai-tasks";
 import { matchRequest } from "./matching";
+import { accountPms, notify } from "./notifications";
 import type { Actor } from "./permissions";
 
 // Feature Request intake: follow-up question -> synchronous match -> support or triage.
@@ -160,6 +161,15 @@ export async function submitFeedback(actor: Actor, input: SubmitInput): Promise<
     await refineNeedStatement(needId);
     return { requestId: request.id, outcome: "attached", needId };
   }
+  // Genuinely new (or uncertain) requests need a PM: tell the client's responsible PM.
+  const [who] = await db.select({ name: users.name, account: accounts.name }).from(users).innerJoin(accounts, eq(accounts.id, accountId)).where(eq(users.id, actor.id));
+  const interpretation = input.context?.summary || input.reason;
+  await notify({
+    event: "request.new", entity: { type: "request", id: request.id }, actorId: actor.id, recipients: await accountPms(accountId),
+    title: `New request from ${who.account}: ${input.title.trim()}`,
+    body: `${who.name} (${who.account}) submitted a request that needs triage.\n\nRequest: ${input.title.trim()}\n${why.trim() ? `Why: ${why.trim()}\n` : ""}AI interpretation: ${interpretation}`,
+    href: () => "/pm/triage",
+  });
   return { requestId: request.id, outcome: "triage", needId: null };
 }
 

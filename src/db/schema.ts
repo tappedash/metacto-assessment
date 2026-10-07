@@ -1,5 +1,5 @@
 import {
-  boolean, integer, jsonb, pgEnum, pgTable, primaryKey, real, text, timestamp, unique, uuid, vector,
+  type AnyPgColumn, boolean, integer, jsonb, pgEnum, pgTable, primaryKey, real, text, timestamp, unique, uuid, vector,
 } from "drizzle-orm/pg-core";
 
 // pgvector column size. OpenAI embeddings are requested at this size; changing it
@@ -23,7 +23,11 @@ export const publicTicketStatus = pgEnum("public_ticket_status", ["planned", "in
 export const commentVisibility = pgEnum("comment_visibility", ["internal", "customer"]);
 export const ticketEventKind = pgEnum("ticket_event_kind", ["status", "comment", "validation"]);
 export const validationVerdict = pgEnum("validation_verdict", ["looks_good", "rework"]);
-export const reworkState = pgEnum("rework_state", ["open", "reopened", "declined"]);
+export const reworkState = pgEnum("rework_state", ["open", "reopened", "follow_up", "declined"]);
+export const integrationKind = pgEnum("integration_kind", ["jira", "github"]);
+export const githubActivityKind = pgEnum("github_activity_kind", ["commit", "pull_request", "branch"]);
+export const notificationChannel = pgEnum("notification_channel", ["in_app", "email"]);
+export const notificationStatus = pgEnum("notification_status", ["sent", "failed", "skipped"]);
 export const effort = pgEnum("effort", ["S", "M", "L", "XL"]);
 export const decisionType = pgEnum("decision_type", ["plan", "defer", "more_info", "not_planned"]);
 
@@ -39,6 +43,8 @@ export const accounts = pgTable("accounts", {
   tier: text("tier").notNull(), // Enterprise | Mid-market | ...
   segment: text("segment").notNull(),
   contractValue: integer("contract_value"), // USD; Admin + PM only
+  // Responsible PM: hears about new requests from this client. Null = every PM.
+  ownerPmId: uuid("owner_pm_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
   ...timestamps,
 });
 
@@ -52,6 +58,9 @@ export const users = pgTable("users", {
   image: text("image"),
   role: userRole("role").notNull(),
   accountId: uuid("account_id").references(() => accounts.id), // client users only
+  active: boolean("active").notNull().default(true), // deactivated users can't sign in or be notified
+  notifyEmail: boolean("notify_email").notNull().default(true),
+  notifyInApp: boolean("notify_in_app").notNull().default(true),
   ...timestamps,
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -113,6 +122,18 @@ export const staffing = pgTable("staffing", {
   accountId: uuid("account_id").notNull().references(() => accounts.id),
 }, (t) => [primaryKey({ columns: [t.engineerId, t.accountId] })]);
 
+// Workspace defaults the Admin can change. One row (id = 1); deliberately small.
+export const workspaceSettings = pgTable("workspace_settings", {
+  id: integer("id").primaryKey().default(1),
+  // AI matches below this confidence aren't shown to the customer; the request goes to PM Triage.
+  matchThreshold: real("match_threshold").notNull().default(0.6),
+  // Which delivery events customers are told about: { planned, in_development, ready_for_review, released, rework_decision }.
+  customerNotify: jsonb("customer_notify").notNull(),
+  // Preferences new users start with.
+  defaultNotifyEmail: boolean("default_notify_email").notNull().default(true),
+  defaultNotifyInApp: boolean("default_notify_in_app").notNull().default(true),
+});
+
 export const strategicGoals = pgTable("strategic_goals", {
   id: uuid("id").primaryKey().defaultRandom(),
   code: text("code").notNull().unique(), // G1, G2, ...
@@ -134,6 +155,7 @@ export const needs = pgTable("needs", {
   rubricFinal: jsonb("rubric_final"),
   aiEvidenceCount: integer("ai_evidence_count"),
   aiGeneratedAt: timestamp("ai_generated_at", { withTimezone: true }),
+  ownerId: uuid("owner_id").references(() => users.id, { onDelete: "set null" }), // owning PM
   ...timestamps,
 });
 
@@ -169,6 +191,10 @@ export const ticketEvents = pgTable("ticket_events", {
   fromStatus: text("from_status"), // internal status names (team view only)
   toStatus: text("to_status"),
   publicStatus: publicTicketStatus("public_status"), // public status after a status change
+  // Customer-visible entries reach customers once published: PM entries and status moves at
+  // once, engineers' customer-visible updates after the PM approves them.
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  publishedBy: uuid("published_by").references(() => users.id, { onDelete: "set null" }),
   ...timestamps,
 });
 
@@ -183,6 +209,7 @@ export const ticketValidations = pgTable("ticket_validations", {
   state: reworkState("state"), // rework only
   resolutionNote: text("resolution_note"), // shown to the customer
   resolvedBy: uuid("resolved_by").references(() => users.id),
+  followUpTicketId: uuid("follow_up_ticket_id").references((): AnyPgColumn => tickets.id, { onDelete: "set null" }), // rework accepted as a new ticket
   ...timestamps,
 });
 
@@ -268,5 +295,61 @@ export const tickets = pgTable("tickets", {
   feasibility: text("feasibility"),
   dependencies: text("dependencies"),
   notes: text("notes"),
+  // Optional Jira issue (Project -> Integrations -> Jira). Needs Hub stays the source of the
+  // customer context; Jira status and assignee are shown as last synced.
+  externalKey: text("external_key"), // PROJ-184
+  externalUrl: text("external_url"),
+  externalStatus: text("external_status"),
+  externalAssignee: text("external_assignee"),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+  ...timestamps,
+});
+
+// Optional per-project connectors. config: jira { siteUrl, projectKey, email, issueType, demo }
+// or github { repos: ["owner/name"], demo }. The API token is stored encrypted (src/lib/secrets.ts).
+export const projectIntegrations = pgTable("project_integrations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  kind: integrationKind("kind").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  config: jsonb("config").notNull(),
+  secret: text("secret"),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  ...timestamps,
+}, (t) => [unique("project_integrations_project_kind").on(t.projectId, t.kind)]);
+
+// Engineering activity from connected repositories, linked to a ticket when its key appears in
+// a commit message, branch name or PR title. Internal only: customers never see it.
+export const githubActivity = pgTable("github_activity", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  ticketId: uuid("ticket_id").references(() => tickets.id, { onDelete: "set null" }),
+  kind: githubActivityKind("kind").notNull(),
+  repo: text("repo").notNull(), // owner/name
+  ref: text("ref").notNull(), // commit sha, PR number or branch name
+  title: text("title").notNull(),
+  author: text("author"),
+  url: text("url").notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  ...timestamps,
+}, (t) => [unique("github_activity_ref").on(t.projectId, t.kind, t.repo, t.ref)]);
+
+// Notifications: the in-app inbox and the audit trail of every delivery attempt (one row per
+// recipient and channel).
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(), // e.g. ticket.assigned
+  entityType: text("entity_type").notNull(), // request | need | ticket | project | rework
+  entityId: uuid("entity_id").notNull(),
+  channel: notificationChannel("channel").notNull(),
+  status: notificationStatus("status").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  href: text("href").notNull(),
+  error: text("error"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  readAt: timestamp("read_at", { withTimezone: true }),
   ...timestamps,
 });

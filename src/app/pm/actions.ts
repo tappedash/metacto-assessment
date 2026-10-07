@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { approveAndSend, ensureNeedInsights, saveDecision, type DecisionInput } from "@/domain/decisions";
-import { createTicket, moveTicket } from "@/domain/delivery";
+import { createTicket, moveTicket, updateTicket } from "@/domain/delivery";
 import { RUBRIC_KEYS } from "@/domain/ai-tasks";
 import { requireActor } from "@/domain/session";
 import { acceptSuggestion, createNeed, mergeNeeds, moveToNeed } from "@/domain/triage";
-import { addComment } from "@/domain/tracking";
+import { addComment, publishUpdate } from "@/domain/tracking";
 import { reviewRework } from "@/domain/validation";
 import { addStatus, moveStatus, removeStatus, updateStatus, type Stage } from "@/domain/workflow";
 import { str, withFlash } from "@/lib/flash";
@@ -100,13 +100,33 @@ export async function addTicketCommentAction(ticketId: string, form: FormData) {
   });
 }
 
+export async function publishUpdateAction(ticketId: string, eventId: string) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/tickets/${ticketId}`, async () => {
+    await publishUpdate(actor, eventId);
+    refresh();
+    return "Published. Customers following this ticket were notified.";
+  });
+}
+
+export async function updateTicketAction(ticketId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/tickets/${ticketId}`, async () => {
+    await updateTicket(actor, ticketId, { assigneeId: str(form, "assigneeId") || null, priority: str(form, "priority") || null });
+    refresh();
+    return "Ticket updated.";
+  });
+}
+
 export async function reviewReworkAction(ticketId: string, validationId: string, form: FormData) {
   const actor = await requireActor(["pm"]);
   await withFlash(`/pm/tickets/${ticketId}`, async () => {
-    const decision = str(form, "decision") === "reopen" ? "reopen" : "decline";
+    const choice = str(form, "decision");
+    const decision = choice === "reopen" || choice === "follow_up" ? choice : "decline";
     await reviewRework(actor, validationId, decision, str(form, "note"));
     refresh();
-    return decision === "reopen" ? "Ticket reopened. The customer sees it back In Development." : "Decision sent to the customer.";
+    return decision === "reopen" ? "Ticket reopened. The customer sees it back In Development."
+      : decision === "follow_up" ? "Follow-up ticket created as Planned. The customer can track it." : "Decision sent to the customer.";
   });
 }
 

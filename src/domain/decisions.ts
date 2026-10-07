@@ -2,7 +2,6 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getAi } from "@/ai";
 import { getDb } from "@/db/client";
 import { accounts, decisions, needs, requests, staffing, statusUpdates, strategicGoals, supports, users } from "@/db/schema";
-import { sendEmail } from "@/lib/mailer";
 import {
   AI_BRIEF, AI_BRIEF_INSTRUCTIONS, AiBrief, DRAFT_UPDATE, DRAFT_UPDATE_INSTRUCTIONS, DraftUpdate,
   RUBRIC, RUBRIC_INSTRUCTIONS, Rubric,
@@ -10,6 +9,8 @@ import {
 import { NEED_STATUS } from "./labels";
 import { needEvidence, needSignals } from "./needs";
 import { canDecideOnNeed, type Actor } from "./permissions";
+import { hrefs, needCustomers, needEngineers, notify } from "./notifications";
+import { getSettings } from "./settings";
 
 type NeedStatus = "under_review" | "planned" | "in_development" | "released" | "not_planned";
 
@@ -149,17 +150,17 @@ export async function approveAndSend(actor: Actor, updateId: string, edit: { sub
   const subject = edit.subject.trim() || update.subject;
   const body = edit.body.trim() || update.body;
 
-  const recipients = await updateRecipients(update.needId);
-  const failed: SendResult["failed"] = [];
-  for (const r of recipients) {
-    try {
-      await sendEmail({ to: `${r.name} <${r.email}>`, subject, text: body });
-    } catch (error) {
-      failed.push({ email: r.email, error: (error as Error).message });
-    }
-  }
+  // Customers hear about the statuses the Admin enabled; staffed engineers always do.
+  const settings = await getSettings();
+  const toggle = { planned: "planned", in_development: "in_development", released: "released" } as const;
+  const key = toggle[update.status as keyof typeof toggle];
+  const customers = key && !settings.customerNotify[key] ? [] : await needCustomers(update.needId);
+  const result = await notify({
+    event: "need.update_published", entity: { type: "need", id: update.needId }, actorId: actor.id,
+    recipients: [...customers, ...(await needEngineers(update.needId))], title: subject, body, href: hrefs.need(update.needId),
+  });
   await db.update(statusUpdates).set({ subject, body, approvedBy: actor.id, sentAt: new Date() }).where(eq(statusUpdates.id, updateId));
-  return { sent: recipients.length - failed.length, failed };
+  return { sent: result.notified - result.emailFailed.length, failed: result.emailFailed };
 }
 
 export async function draftCount(): Promise<number> {

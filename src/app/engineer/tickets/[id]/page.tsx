@@ -7,10 +7,10 @@ import { getNeed, needSignals } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
 import { projectWorkflow } from "@/domain/workflow";
 import { ReworkReview } from "@/components/rework-review";
-import { CommentForm, TeamTimeline } from "@/components/ticket-timeline";
+import { CommentForm, PmInputForm, TeamTimeline } from "@/components/ticket-timeline";
 import { teamTimeline } from "@/domain/tracking";
 import { reworkRequests } from "@/domain/validation";
-import { addCommentAction, moveMyTicketAction, reviewReworkAction, saveNotesAction } from "../../actions";
+import { addCommentAction, moveMyTicketAction, requestPmInputAction, reviewReworkAction, saveNotesAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +57,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           <h2 style={{ marginBottom: ".9rem" }}>Updates</h2>
           <TeamTimeline events={events} />
         </div>
-        <div className="card"><CommentForm action={addCommentAction.bind(null, id)} /></div>
+        <div className="card stack"><CommentForm action={addCommentAction.bind(null, id)} needsApproval /><PmInputForm action={requestPmInputAction.bind(null, id)} /></div>
       </div>
 
       <form className="section card" action={saveNotesAction.bind(null, id)}>
