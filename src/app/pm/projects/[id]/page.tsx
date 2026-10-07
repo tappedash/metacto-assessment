@@ -31,7 +31,7 @@ export default async function ProjectWorkflowPage({ params, searchParams }: { pa
         <div>
           <span className="eyebrow">{project.accountName}</span>
           <h1>{project.name}: ticket statuses</h1>
-          <p className="lede">Rename, add, reorder or remove statuses to fit how this engagement works. The board shows them left to right.</p>
+          <p className="lede">Rename, add, reorder or remove statuses to fit how this engagement works. Customers never see these names, only Planned, In Development, Ready for Review or Released.</p>
         </div>
         <Link className="btn btn-ghost btn-sm" href={`/pm/tickets?project=${id}`}>Open board</Link>
       </div>
@@ -60,6 +60,15 @@ export default async function ProjectWorkflowPage({ params, searchParams }: { pa
                       <select id={`stage-${s.id}`} name="stage" defaultValue={s.stage} style={{ margin: 0 }}>
                         {STAGES.map((st) => <option key={st} value={st}>{STAGE_LABEL[st]}</option>)}
                       </select>
+                      {s.stage === "in_progress" ? (
+                        <>
+                          <label className="sr-only" htmlFor={`cust-${s.id}`}>What customers see for {s.name}</label>
+                          <select id={`cust-${s.id}`} name="customerLabel" defaultValue={s.publicStatus === "ready_for_review" ? "ready_for_review" : "in_development"} style={{ margin: 0 }} title="What customers see">
+                            <option value="in_development">Customers see: In Development</option>
+                            <option value="ready_for_review">Customers see: Ready for Review</option>
+                          </select>
+                        </>
+                      ) : <span className="muted" style={{ fontSize: 12 }}>Customers see: {s.stage === "backlog" ? "nothing (hidden)" : s.stage === "planned" ? "Planned" : "Released"}</span>}
                       <div className="btn-row">
                         <button className="btn btn-ghost btn-sm" type="submit">Save</button>
                         <button className="btn btn-ghost btn-sm" type="submit" formAction={moveStatusAction.bind(null, id, s.id, "up")} disabled={i === 0} aria-label={`Move ${s.name} up`}>↑</button>

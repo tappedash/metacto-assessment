@@ -214,7 +214,7 @@ export default async function NeedDetailPage({ params, searchParams }: { params:
             <tbody>
               {ticketRows.map((t) => (
                 <tr key={t.id}>
-                  <td className="primary"><span className="ticket-id">{t.key}</span><br /><span className="strong">{t.title}</span></td>
+                  <td className="primary"><span className="ticket-id">{t.key}</span><br /><Link className="row-link" href={`/pm/tickets/${t.id}`}>{t.title}</Link></td>
                   <td data-label="Project · Client">{t.projectName} · {t.accountName}</td>
                   <td data-label="Assignee">{t.assignee ?? "Unassigned"}</td>
                   <td data-label="Status"><TicketStatus name={t.statusName} stage={t.stage} /></td>

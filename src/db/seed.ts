@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { loadEnv } from "@/lib/env-loader";
 import { getAi } from "@/ai";
 import { closeDb, getDb } from "./client";
@@ -35,7 +35,8 @@ const NEEDS = {
   rates: {
     title: "Update many carrier rates at once",
     problemStatement: "Operations teams need to update many carrier rates at once because rate cards change quarterly; today they edit each lane manually.",
-    status: "under_review" as const,
+    status: "released" as const, priority: "P2" as const,
+    publicRationale: "Quarterly rate changes take days of manual edits; a CSV import removes that work.",
   },
 };
 type NeedKey = keyof typeof NEEDS;
@@ -49,7 +50,7 @@ export async function seed({ quiet = false } = {}) {
 
   await db.execute(sql`TRUNCATE accounts, users, staffing, strategic_goals, needs, requests, supports,
     decisions, status_updates, projects, project_statuses, project_members, tickets, attachments,
-    invitations, auth_sessions, auth_accounts, auth_verifications RESTART IDENTITY CASCADE`);
+    invitations, auth_sessions, auth_accounts, auth_verifications, ticket_events, ticket_validations RESTART IDENTITY CASCADE`);
 
   const [northwind, contoso, fabrikam, tailspin, alpine, bluebird, cedar] = await db.insert(s.accounts).values([
     { name: "Northwind Logistics", tier: "Mid-market", segment: "Logistics", contractValue: 420_000 },
@@ -155,6 +156,9 @@ export async function seed({ quiet = false } = {}) {
     { name: "Security review", stage: "in_progress" }, { name: "UAT", stage: "in_progress" },
     { name: "Client sign-off", stage: "in_progress" }, { name: "Live", stage: "done" },
   ]);
+  // Customers see UAT and client sign-off as "Ready for Review"; internal names stay internal.
+  await db.update(s.projectStatuses).set({ publicStatus: "ready_for_review" })
+    .where(and(eq(s.projectStatuses.projectId, im.id), inArray(s.projectStatuses.name, ["UAT", "Client sign-off"])));
   await createDefaultWorkflow(db, ca.id, DEFAULT_WORKFLOW);
   await createDefaultWorkflow(db, cr.id, DEFAULT_WORKFLOW);
   const statusIds = new Map<string, string>();
@@ -174,13 +178,47 @@ export async function seed({ quiet = false } = {}) {
     { key: "T-104", projectId: im.id, needId: need.sso.id, title: "SAML SSO for the admin console", statusId: status(im.id, "Security review"), priority: "P1", effort: "L", assigneeId: ravi.id },
     { key: "T-105", projectId: im.id, needId: need.sso.id, title: "Okta SCIM user provisioning", statusId: status(im.id, "Backlog"), priority: "P2", effort: "M", assigneeId: jo.id },
     { key: "T-106", projectId: cr.id, needId: need.export.id, title: "Audit log export", statusId: status(cr.id, "Released"), priority: "P2", effort: "S", assigneeId: ravi.id },
-    { key: "T-107", projectId: ca.id, needId: need.rates.id, title: "Bulk rate import from CSV", statusId: status(ca.id, "Backlog"), priority: "P2", effort: "M", assigneeId: mia.id },
+    { key: "T-107", projectId: ca.id, needId: need.rates.id, title: "Bulk rate import from CSV", statusId: status(ca.id, "Released"), priority: "P2", effort: "M", assigneeId: mia.id },
     { key: "T-108", projectId: ca.id, needId: need.delays.id, title: "SLA breach alert prototype", statusId: status(ca.id, "Backlog"), priority: "P3", effort: "S", assigneeId: jo.id },
   ]);
 
   await db.insert(s.statusUpdates).values({
     needId: need.sso.id, status: "in_development", subject: "SSO is in development: SAML first",
     body: "We're building SAML sign-in for the admin console first; OIDC follows.", approvedBy: sam.id, sentAt: new Date(),
+  });
+
+  // Ticket timelines: status moves (customer-visible when the public status changes) and
+  // contributor updates, some shared with customers, some internal only.
+  const ticketRows = await db.select({ id: s.tickets.id, key: s.tickets.key, projectId: s.tickets.projectId }).from(s.tickets);
+  const tid = (key: string) => ticketRows.find((t) => t.key === key)!;
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000);
+  const pub: Record<string, "planned" | "in_development" | "ready_for_review" | "released" | null> = {
+    Backlog: null, Planned: "planned", "In Development": "in_development", "In QA": "in_development", Build: "in_development",
+    "Security review": "in_development", UAT: "ready_for_review", "Client sign-off": "ready_for_review", Released: "released", Live: "released",
+  };
+  const moves = (key: string, by: { id: string }, steps: [string, string, number][]) =>
+    steps.map(([from, to, days]) => ({
+      ticketId: tid(key).id, kind: "status" as const, authorId: by.id, fromStatus: from, toStatus: to, publicStatus: pub[to],
+      visibility: pub[to] && pub[to] !== pub[from] ? ("customer" as const) : ("internal" as const), createdAt: ago(days),
+    }));
+  const note = (key: string, by: { id: string }, visibility: "internal" | "customer", body: string, days: number) =>
+    ({ ticketId: tid(key).id, kind: "comment" as const, authorId: by.id, visibility, body, createdAt: ago(days) });
+  await db.insert(s.ticketEvents).values([
+    ...moves("T-101", sam, [["Backlog", "Planned", 6]]),
+    note("T-101", sam, "customer", "We're starting with CSV export for every dashboard report; a Google Sheets connection comes after.", 5),
+    note("T-101", ravi, "internal", "Report query p95 is ~4s on large accounts; add pagination before export.", 2),
+    ...moves("T-103", sam, [["Backlog", "Planned", 12]]), ...moves("T-103", ravi, [["Planned", "In Development", 4]]),
+    ...moves("T-104", sam, [["Backlog", "Planned", 30]]), ...moves("T-104", ravi, [["Planned", "Build", 21], ["Build", "Security review", 3]]),
+    note("T-104", ravi, "internal", "Pen-test finding on assertion replay; fix before UAT.", 2),
+    ...moves("T-106", sam, [["Backlog", "Planned", 40]]), ...moves("T-106", ravi, [["Planned", "In Development", 30], ["In Development", "Released", 8]]),
+    ...moves("T-107", sam, [["Backlog", "Planned", 24]]),
+    ...moves("T-107", mia, [["Planned", "In Development", 16], ["In Development", "Released", 3]]),
+    note("T-107", mia, "internal", "Validated with 240 lanes from Northwind's Q3 rate card; feature flag rate_import on.", 4),
+    note("T-107", sam, "customer", "Bulk rate import is live: Rates → Import CSV. Upload your rate card and review the changes before applying.", 3),
+  ]);
+  await db.insert(s.statusUpdates).values({
+    needId: need.rates.id, status: "released", subject: "Released: bulk carrier rate import",
+    body: "You can now import a whole rate card from CSV (Rates → Import CSV) and review changes before applying them.", approvedBy: sam.id, sentAt: ago(3),
   });
 
   if (!quiet) console.log(`Seeded ${needRows.length} Customer Needs, ${REQUESTS.length} Feature Requests, 4 projects, 8 tickets.`);

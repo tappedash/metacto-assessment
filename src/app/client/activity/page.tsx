@@ -3,6 +3,8 @@ import Link from "next/link";
 import { NeedStatus, PageHead } from "@/components/ui";
 import { EvidenceFiles } from "@/components/evidence-files";
 import { attachmentsForRequests } from "@/domain/attachments";
+import { PublicStatusChip } from "@/components/public-ticket";
+import { customerActivity, customerTickets } from "@/domain/tracking";
 import { getDb } from "@/db/client";
 import { needs, requests, supports } from "@/db/schema";
 import { requireActor } from "@/domain/session";
@@ -18,13 +20,41 @@ export default async function ActivityPage() {
     db.select({ id: needs.id, title: needs.title, status: needs.status }).from(supports).innerJoin(needs, eq(needs.id, supports.needId))
       .where(eq(supports.userId, actor.id)).orderBy(desc(supports.createdAt)),
   ]);
-  const files = await attachmentsForRequests(mine.map((r) => r.id));
+  const [files, feed, delivery] = await Promise.all([attachmentsForRequests(mine.map((r) => r.id)), customerActivity(actor), customerTickets(actor)]);
   const linkedIds = new Set(mine.filter((r) => r.linkState === "confirmed").map((r) => r.needId));
   const onlySupported = supported.filter((s) => !linkedIds.has(s.id));
 
   return (
     <div className="narrow">
       <PageHead eyebrow="My activity" title="Your requests and supported needs" />
+      {feed.length > 0 && (
+        <section className="section" style={{ marginTop: 0, marginBottom: "1.5rem" }} aria-labelledby="recent-h">
+          <div className="section-head"><h2 id="recent-h" style={{ fontSize: "1.05rem" }}>Recent updates</h2></div>
+          <div className="card">
+            <ol className="timeline">
+              {feed.slice(0, 6).map((f, i) => (
+                <li key={i} className={i === 0 ? "now" : "done"}>
+                  <Link className="btn-link" href={f.href}>{f.text}</Link><br />
+                  <span className="when">{f.at.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      )}
+      {delivery.tickets.length > 0 && (
+        <section style={{ marginBottom: "1.5rem" }} aria-labelledby="deliveries-h">
+          <div className="section-head"><h2 id="deliveries-h" style={{ fontSize: "1.05rem" }}>Your deliveries</h2></div>
+          <div className="card flush list">
+            {delivery.tickets.map((t) => (
+              <div className="item item-body" key={t.id}>
+                <div><Link className="row-link" href={`/client/tickets/${t.id}`}>{t.title}</Link><p className="muted">{t.needTitle}</p></div>
+                <PublicStatusChip status={t.publicStatus} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="card flush list">
         {mine.map((r) => (
           <div className="item item-body" key={r.id}>

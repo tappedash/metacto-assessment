@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { moveTicket, saveTicketNotes } from "@/domain/delivery";
+import { addComment } from "@/domain/tracking";
 import { requireActor } from "@/domain/session";
 import { str, withFlash } from "@/lib/flash";
 
@@ -11,6 +12,16 @@ export async function moveMyTicketAction(ticketId: string, back: string, form: F
     const { needStatusChanged, status } = await moveTicket(actor, ticketId, str(form, "to"));
     revalidatePath("/", "layout");
     return needStatusChanged ? `Moved to ${status}. AI drafted a customer update for the PM to approve.` : `Moved to ${status}.`;
+  });
+}
+
+export async function addCommentAction(ticketId: string, form: FormData) {
+  const actor = await requireActor(["engineer"]);
+  await withFlash(`/engineer/tickets/${ticketId}`, async () => {
+    const visibility = str(form, "visibility") === "customer" ? "customer" : "internal";
+    await addComment(actor, ticketId, str(form, "body"), visibility);
+    revalidatePath("/", "layout");
+    return visibility === "customer" ? "Update posted. The customer can see it." : "Internal update posted.";
   });
 }
 

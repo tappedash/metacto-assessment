@@ -44,8 +44,11 @@ describe("per-project ticket workflow", () => {
 
   it("protects the rules: unique names, keep a Backlog and a Done status", async () => {
     await expect(addStatus(sam, projectId, "planned", "planned")).rejects.toThrow(/unique/);
-    const released = (await projectWorkflow(projectId)).find((s) => s.stage === "done")!;
-    await expect(removeStatus(sam, released.id, null)).rejects.toThrow(/Done/);
+    const workflow = await projectWorkflow(projectId);
+    const released = workflow.find((s) => s.stage === "done")!;
+    const planned = workflow.find((s) => s.stage === "planned")!;
+    // Even with somewhere to move its tickets, the last Done status can't go.
+    await expect(removeStatus(sam, released.id, planned.id)).rejects.toThrow(/Done/);
   });
 
   it("asks where tickets go when their status is removed, then moves them", async () => {

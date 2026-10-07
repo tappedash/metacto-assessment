@@ -42,7 +42,7 @@ export default async function PmTicketsPage({ searchParams }: { searchParams: Se
             {col.cards.map((t) => (
               <div className="ticket" key={t.id}>
                 <span className="ticket-id">{t.key} · <span className="prio">{t.priority ?? "—"}</span> · Effort {t.effort ?? "—"}</span>
-                <span className="t-title">{t.title}</span>
+                <span className="t-title"><Link className="row-link" href={`/pm/tickets/${t.id}`}>{t.title}</Link></span>
                 <span className="muted">{t.projectName} · {t.accountName}</span><br />
                 <span className="muted">Customer Need: <Link className="btn-link" href={`/pm/needs/${t.needId}`}>{t.needTitle}</Link></span>
                 <span className="meta">

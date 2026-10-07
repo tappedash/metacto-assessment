@@ -7,6 +7,7 @@ import { createTicket, moveTicket } from "@/domain/delivery";
 import { RUBRIC_KEYS } from "@/domain/ai-tasks";
 import { requireActor } from "@/domain/session";
 import { acceptSuggestion, createNeed, mergeNeeds, moveToNeed } from "@/domain/triage";
+import { addComment } from "@/domain/tracking";
 import { addStatus, moveStatus, removeStatus, updateStatus, type Stage } from "@/domain/workflow";
 import { str, withFlash } from "@/lib/flash";
 
@@ -88,6 +89,16 @@ export async function moveTicketAction(ticketId: string, back: string, form: For
   });
 }
 
+export async function addTicketCommentAction(ticketId: string, form: FormData) {
+  const actor = await requireActor(["pm"]);
+  await withFlash(`/pm/tickets/${ticketId}`, async () => {
+    const visibility = str(form, "visibility") === "customer" ? "customer" : "internal";
+    await addComment(actor, ticketId, str(form, "body"), visibility);
+    refresh();
+    return visibility === "customer" ? "Update posted. Customers following this can see it." : "Internal update posted.";
+  });
+}
+
 // ---------- per-project ticket workflow ----------
 
 export async function addStatusAction(projectId: string, form: FormData) {
@@ -102,7 +113,7 @@ export async function addStatusAction(projectId: string, form: FormData) {
 export async function updateStatusAction(projectId: string, statusId: string, form: FormData) {
   const actor = await requireActor(["pm"]);
   await withFlash(`/pm/projects/${projectId}`, async () => {
-    await updateStatus(actor, statusId, { name: str(form, "name"), stage: str(form, "stage") as Stage });
+    await updateStatus(actor, statusId, { name: str(form, "name"), stage: str(form, "stage") as Stage, readyForReview: str(form, "customerLabel") === "ready_for_review" });
     refresh();
     return "Status saved.";
   });

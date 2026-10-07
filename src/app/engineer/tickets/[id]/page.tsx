@@ -6,7 +6,9 @@ import { getTicket } from "@/domain/delivery";
 import { getNeed, needSignals } from "@/domain/needs";
 import { requireActor } from "@/domain/session";
 import { projectWorkflow } from "@/domain/workflow";
-import { moveMyTicketAction, saveNotesAction } from "../../actions";
+import { CommentForm, TeamTimeline } from "@/components/ticket-timeline";
+import { teamTimeline } from "@/domain/tracking";
+import { addCommentAction, moveMyTicketAction, saveNotesAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const sp = await searchParams;
   const ticket = await getTicket(actor, id);
   if (!ticket) notFound();
-  const [need, signals, workflow] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId)]);
+  const [need, signals, workflow, events] = await Promise.all([getNeed(ticket.needId), needSignals([ticket.needId]), projectWorkflow(ticket.projectId), teamTimeline(id)]);
   const s = signals.get(ticket.needId)!;
   const mine = ticket.assigneeId === actor.id;
 
@@ -45,6 +47,14 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         <div><dt>Assignee</dt><dd>{ticket.assignee ?? "Unassigned"}{mine ? " (you)" : ""}</dd></div>
         <div><dt>Effort</dt><dd>{ticket.effort ?? "Not estimated"}</dd></div>
       </dl>
+
+      <div className="section grid split">
+        <div className="card">
+          <h2 style={{ marginBottom: ".9rem" }}>Updates</h2>
+          <TeamTimeline events={events} />
+        </div>
+        <div className="card"><CommentForm action={addCommentAction.bind(null, id)} /></div>
+      </div>
 
       <form className="section card" action={saveNotesAction.bind(null, id)}>
         <h2 style={{ marginBottom: "1rem" }}>Technical notes</h2>

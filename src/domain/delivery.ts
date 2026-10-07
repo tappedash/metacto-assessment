@@ -3,6 +3,7 @@ import { getDb } from "@/db/client";
 import { accounts, needs, projectMembers, projects, projectStatuses, statusUpdates, tickets, users } from "@/db/schema";
 import { draftStatusUpdate } from "./decisions";
 import { allowedTicketMoves, canViewAccountEvidence, type Actor } from "./permissions";
+import { recordStatusChange } from "./tracking";
 import { projectWorkflow } from "./workflow";
 
 // Delivery layer: Client (account) -> Project -> Ticket. Each ticket links to the
@@ -67,7 +68,7 @@ export async function getTicket(actor: Actor, id: string) {
  * follows delivery by stage: first ticket In progress -> Need "In Development"; all
  * tickets Done -> Need "Released". Each Need change drafts an update for the PM.
  */
-export async function moveTicket(actor: Actor, ticketId: string, toStatusId: string) {
+export async function moveTicket(actor: Actor, ticketId: string, toStatusId: string, options: { note?: string } = {}) {
   const db = getDb();
   const [ticket] = await ticketQuery().where(eq(tickets.id, ticketId));
   if (!ticket || (actor.role === "engineer" && !canViewAccountEvidence(actor, ticket.accountId))) throw new Error("Ticket not found");
@@ -76,6 +77,8 @@ export async function moveTicket(actor: Actor, ticketId: string, toStatusId: str
     .find((s) => s.id === toStatusId);
   if (!target) throw new Error("You can't move this ticket to that status");
   await db.update(tickets).set({ statusId: target.id }).where(eq(tickets.id, ticketId));
+  const from = workflow.find((s) => s.id === ticket.statusId)!;
+  await recordStatusChange(db, { ticketId, actorId: actor.id, from, to: target, note: options.note });
 
   const [need] = await db.select().from(needs).where(eq(needs.id, ticket.needId));
   const siblings = await db.select({ stage: projectStatuses.stage }).from(tickets)

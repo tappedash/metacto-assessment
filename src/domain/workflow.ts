@@ -28,6 +28,8 @@ export interface StatusDef {
   projectId: string;
   name: string;
   stage: Stage;
+  /** Customer-facing label for In-progress statuses ("ready_for_review"); otherwise derived. */
+  publicStatus: "planned" | "in_development" | "ready_for_review" | "released" | null;
   position: number;
 }
 
@@ -86,7 +88,8 @@ async function changeWorkflow(projectId: string, edit: (list: StatusDef[], tx: T
     if (problem) throw new Error(problem);
     // Renumber in board order (temporary offset avoids clashing with existing positions).
     for (const [i, s] of next.entries()) {
-      await tx.update(projectStatuses).set({ name: s.name.trim(), stage: s.stage, position: 1000 + i }).where(eq(projectStatuses.id, s.id));
+      const publicStatus = s.stage === "in_progress" && s.publicStatus === "ready_for_review" ? "ready_for_review" : null;
+      await tx.update(projectStatuses).set({ name: s.name.trim(), stage: s.stage, publicStatus, position: 1000 + i }).where(eq(projectStatuses.id, s.id));
     }
     await tx.execute(sql`UPDATE project_statuses SET position = position - 1000 WHERE project_id = ${projectId}::uuid`);
   });
@@ -105,13 +108,13 @@ export async function addStatus(actor: Actor, projectId: string, name: string, s
   });
 }
 
-export async function updateStatus(actor: Actor, statusId: string, input: { name: string; stage: Stage }) {
+export async function updateStatus(actor: Actor, statusId: string, input: { name: string; stage: Stage; readyForReview?: boolean }) {
   assertPm(actor);
   const [status] = await getDb().select().from(projectStatuses).where(eq(projectStatuses.id, statusId));
   if (!status) throw new Error("Status not found");
   await changeWorkflow(status.projectId, (list) => {
     const others = list.filter((s) => s.id !== statusId);
-    const edited = { ...(status as StatusDef), name: input.name, stage: input.stage };
+    const edited = { ...(status as StatusDef), name: input.name, stage: input.stage, publicStatus: input.readyForReview ? ("ready_for_review" as const) : null };
     if (edited.stage === status.stage) return list.map((s) => (s.id === statusId ? edited : s));
     // A new stage moves the status to the end of that stage's group.
     return sortStatuses([...others, { ...edited, position: 10_000 }]);

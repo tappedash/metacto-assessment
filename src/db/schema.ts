@@ -18,6 +18,12 @@ export const linkState = pgEnum("link_state", ["confirmed", "triage"]);
 // only the PM moves tickets out of Backlog; engineers move their own tickets through the rest;
 // the first ticket In progress moves the Need to In Development, all Done -> Released.
 export const statusStage = pgEnum("status_stage", ["backlog", "planned", "in_progress", "done"]);
+// What customers see for a ticket. Backlog tickets are never shown to customers.
+export const publicTicketStatus = pgEnum("public_ticket_status", ["planned", "in_development", "ready_for_review", "released"]);
+export const commentVisibility = pgEnum("comment_visibility", ["internal", "customer"]);
+export const ticketEventKind = pgEnum("ticket_event_kind", ["status", "comment", "validation"]);
+export const validationVerdict = pgEnum("validation_verdict", ["looks_good", "rework"]);
+export const reworkState = pgEnum("rework_state", ["open", "reopened", "declined"]);
 export const effort = pgEnum("effort", ["S", "M", "L", "XL"]);
 export const decisionType = pgEnum("decision_type", ["plan", "defer", "more_info", "not_planned"]);
 
@@ -151,12 +157,42 @@ export const requests = pgTable("requests", {
   ...timestamps,
 });
 
+// Ticket timeline: status changes and contributor comments. Customers see only events
+// marked "customer" (public status changes and comments explicitly shared with them).
+export const ticketEvents = pgTable("ticket_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+  kind: ticketEventKind("kind").notNull(),
+  visibility: commentVisibility("visibility").notNull().default("internal"),
+  authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body"), // comment text, or validation note
+  fromStatus: text("from_status"), // internal status names (team view only)
+  toStatus: text("to_status"),
+  publicStatus: publicTicketStatus("public_status"), // public status after a status change
+  ...timestamps,
+});
+
+// Customer validation after release: "Looks good" or a rework request for the team to review.
+export const ticketValidations = pgTable("ticket_validations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  verdict: validationVerdict("verdict").notNull(),
+  description: text("description"),
+  aiContext: jsonb("ai_context"), // { summary, expected, actual, impact } confirmed by the customer
+  state: reworkState("state"), // rework only
+  resolutionNote: text("resolution_note"), // shown to the customer
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  ...timestamps,
+});
+
 // Files customers attach to feedback (or share with the Assistant). Stored on local disk
 // for the MVP; only the owner, the PM and engineers staffed on the account can open them.
 export const attachments = pgTable("attachments", {
   id: uuid("id").primaryKey().defaultRandom(),
   ownerId: uuid("owner_id").notNull().references(() => users.id),
   requestId: uuid("request_id").references(() => requests.id, { onDelete: "set null" }),
+  validationId: uuid("validation_id").references(() => ticketValidations.id, { onDelete: "set null" }),
   filename: text("filename").notNull(),
   mimeType: text("mime_type").notNull(),
   kind: text("kind").notNull(), // pdf | document | spreadsheet | image | text
@@ -209,6 +245,8 @@ export const projectStatuses = pgTable("project_statuses", {
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   stage: statusStage("stage").notNull(),
+  // Customer-facing label; null = derived from the stage (planned / in development / released).
+  publicStatus: publicTicketStatus("public_status"),
   position: integer("position").notNull(),
 }, (t) => [unique("project_statuses_project_name").on(t.projectId, t.name)]);
 

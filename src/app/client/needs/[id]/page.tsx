@@ -5,6 +5,9 @@ import { getNeed, isSupporting, needSignals, sentUpdates } from "@/domain/needs"
 import { toPublicNeed } from "@/domain/permissions";
 import { requireActor } from "@/domain/session";
 import { toggleSupport } from "../../actions";
+import Link from "next/link";
+import { PublicStatusChip } from "@/components/public-ticket";
+import { customerTickets } from "@/domain/tracking";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +22,8 @@ export default async function ClientNeedPage({ params, searchParams }: { params:
   if (!record) notFound();
   const signals = (await needSignals([id])).get(id)!;
   const need = toPublicNeed(record, signals.supporters);
-  const [supporting, updates] = await Promise.all([isSupporting(actor.id, id), sentUpdates(id)]);
+  const [supporting, updates, delivery] = await Promise.all([isSupporting(actor.id, id), sentUpdates(id), customerTickets(actor, { needId: id })]);
+  const otherProjects = delivery.otherProjects.get(id) ?? 0;
   const latest = updates[0];
   const stageIndex = STAGES.indexOf(need.status as (typeof STAGES)[number]);
   const reached = new Map(updates.map((u) => [u.status, u.sentAt!]));
@@ -47,6 +51,22 @@ export default async function ClientNeedPage({ params, searchParams }: { params:
           </button>
         </form>
       </div>
+
+      {(delivery.tickets.length > 0 || otherProjects > 0) && (
+        <section className="section" aria-labelledby="delivery-h" style={{ marginTop: 0, marginBottom: "1.25rem" }}>
+          <div className="section-head"><h2 id="delivery-h" style={{ fontSize: "1.05rem" }}>Delivery</h2><span className="muted">What&apos;s being built for this</span></div>
+          <div className="card flush list">
+            {delivery.tickets.map((t) => (
+              <div className="item item-body" key={t.id}>
+                <div><Link className="row-link" href={`/client/tickets/${t.id}`}>{t.title}</Link>
+                  <p className="muted">Updated {t.lastUpdated.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</p></div>
+                <PublicStatusChip status={t.publicStatus} />
+              </div>
+            ))}
+            {otherProjects > 0 && <div className="item muted">Also being delivered for {otherProjects} other {otherProjects === 1 ? "project" : "projects"}.</div>}
+          </div>
+        </section>
+      )}
 
       <div className="grid split">
         <div className="card stack">

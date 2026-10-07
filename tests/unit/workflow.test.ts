@@ -22,10 +22,10 @@ describe("validateWorkflow", () => {
 
 describe("board columns", () => {
   const flow: StatusDef[] = sortStatuses([
-    { id: "s4", projectId: "p", name: "Live", stage: "done", position: 3 },
-    { id: "s1", projectId: "p", name: "Backlog", stage: "backlog", position: 0 },
-    { id: "s3", projectId: "p", name: "UAT", stage: "in_progress", position: 2 },
-    { id: "s2", projectId: "p", name: "Build", stage: "in_progress", position: 1 },
+    { id: "s4", projectId: "p", name: "Live", stage: "done", publicStatus: null, position: 3 },
+    { id: "s1", projectId: "p", name: "Backlog", stage: "backlog", publicStatus: null, position: 0 },
+    { id: "s3", projectId: "p", name: "UAT", stage: "in_progress", publicStatus: null, position: 2 },
+    { id: "s2", projectId: "p", name: "Build", stage: "in_progress", publicStatus: null, position: 1 },
   ]);
   const tickets = [
     { id: "a", projectId: "p", statusId: "s2", stage: "in_progress" as const },
