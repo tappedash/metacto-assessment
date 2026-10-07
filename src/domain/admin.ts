@@ -42,13 +42,6 @@ export async function listUsers() {
     .from(users).leftJoin(accounts, eq(accounts.id, users.accountId)).orderBy(asc(users.name));
 }
 
-export async function createUser(actor: Actor, input: { name: string; email: string; role: Role; accountId: string | null }) {
-  assertAdmin(actor);
-  if (!input.name.trim() || !input.email.includes("@")) throw new Error("Name and a valid email are required");
-  if (input.role === "client" && !input.accountId) throw new Error("Client users need a client account");
-  await getDb().insert(users).values({ name: input.name.trim(), email: input.email.trim().toLowerCase(), role: input.role, accountId: input.role === "client" ? input.accountId : null });
-}
-
 export async function setUserRole(actor: Actor, userId: string, role: Role) {
   assertAdmin(actor);
   if (userId === actor.id) throw new Error("You can't change your own role");

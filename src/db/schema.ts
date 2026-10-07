@@ -36,12 +36,68 @@ export const accounts = pgTable("accounts", {
   ...timestamps,
 });
 
+// App users, also Better Auth's "user" model (see src/lib/auth.ts). role and accountId are
+// set only from an invitation, never by the sign-in request.
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
   role: userRole("role").notNull(),
   accountId: uuid("account_id").references(() => accounts.id), // client users only
+  ...timestamps,
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------- Better Auth (sessions, OAuth/magic-link accounts, verification tokens) ----------
+// "auth_accounts" are sign-in methods (e.g. Google), not to be confused with client `accounts`.
+export const authSessions = pgTable("auth_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(), // Better Auth generateId "uuid" lets Postgres create ids
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const authAccounts = pgTable("auth_accounts", {
+  id: uuid("id").primaryKey().defaultRandom(), // Better Auth generateId "uuid" lets Postgres create ids
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accountId: text("account_id").notNull(), // provider's user id
+  providerId: text("provider_id").notNull(), // "google", ...
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const authVerifications = pgTable("auth_verifications", {
+  id: uuid("id").primaryKey().defaultRandom(), // Better Auth generateId "uuid" lets Postgres create ids
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Invitation-based onboarding: the Admin invites email + role (+ client account for client
+// users). The first sign-in with that email creates the user from the invitation.
+export const invitations = pgTable("invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  role: userRole("role").notNull(),
+  accountId: uuid("account_id").references(() => accounts.id),
+  invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   ...timestamps,
 });
 

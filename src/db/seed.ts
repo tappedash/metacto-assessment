@@ -48,7 +48,8 @@ export async function seed({ quiet = false } = {}) {
   if (!quiet) console.log(`Seeding with AI_PROVIDER embeddings: ${embeddings.provider} (${embeddings.model})`);
 
   await db.execute(sql`TRUNCATE accounts, users, staffing, strategic_goals, needs, requests, supports,
-    decisions, status_updates, projects, project_statuses, project_members, tickets RESTART IDENTITY CASCADE`);
+    decisions, status_updates, projects, project_statuses, project_members, tickets, attachments,
+    invitations, auth_sessions, auth_accounts, auth_verifications RESTART IDENTITY CASCADE`);
 
   const [northwind, contoso, fabrikam, tailspin, alpine, bluebird, cedar] = await db.insert(s.accounts).values([
     { name: "Northwind Logistics", tier: "Mid-market", segment: "Logistics", contractValue: 420_000 },
@@ -76,7 +77,10 @@ export async function seed({ quiet = false } = {}) {
     { name: "Cara Lind", email: "cara@cedar.example", role: "client", accountId: cedar.id },
     { name: "Dev Shah", email: "dev@fabrikam.example", role: "client", accountId: fabrikam.id },
   ]).returning();
-  void alex;
+  // Seeded people already have access (as if they accepted an invitation); sign in with a magic link.
+  await db.update(s.users).set({ emailVerified: true });
+  // One pending invitation to demo first sign-in: role and client account come from it.
+  await db.insert(s.invitations).values({ email: "maya@cedar.example", name: "Maya Ito", role: "client", accountId: cedar.id, invitedBy: alex.id });
 
   await db.insert(s.staffing).values([
     { engineerId: ravi.id, accountId: northwind.id },

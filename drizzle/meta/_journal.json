@@ -36,6 +36,13 @@
       "when": 1791395127276,
       "tag": "0004_attachments_and_ai_context",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791396787049,
+      "tag": "0005_better_auth_and_invitations",
+      "breakpoints": true
     }
   ]
 }

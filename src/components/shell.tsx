@@ -21,7 +21,7 @@ export function Shell({ actor, items, children, sidebarExtra, overlay }: {
           <div className="user-meta">
             <b>{actor.name}</b>
             <span>{roleLine}</span>
-            <form action={signOut}><button className="sign-out" type="submit">Switch user</button></form>
+            <form action={signOut}><button className="sign-out" type="submit">Sign out</button></form>
           </div>
         </div>
       </aside>

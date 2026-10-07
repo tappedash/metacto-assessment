@@ -1,14 +1,16 @@
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import { accounts, staffing, users } from "@/db/schema";
 import { ROLE_HOME } from "./labels";
 import type { Actor, Role } from "./permissions";
 
-// Demo sign-in: the session cookie holds a seeded user's id. Every page and server
-// action resolves the actor here and checks the role on the server.
-export const SESSION_COOKIE = "nh_user";
+import { getAuth } from "@/lib/auth";
+
+// Better Auth proves who the user is (session cookie -> Postgres session). Everything the
+// app allows is decided here and in the domain layer, from the user's role, client
+// account and staffing: every page and server action resolves the actor through this file.
 
 export interface SessionActor extends Actor {
   name: string;
@@ -31,9 +33,9 @@ export async function loadActor(userId: string): Promise<SessionActor | null> {
 }
 
 export async function getActor(): Promise<SessionActor | null> {
-  const id = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!id || !/^[0-9a-f-]{36}$/.test(id)) return null;
-  return loadActor(id);
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  if (!session) return null;
+  return loadActor(session.user.id);
 }
 
 /** Resolves the signed-in actor or redirects; wrong role goes to the actor's own home. */

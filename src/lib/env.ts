@@ -15,8 +15,16 @@ const schema = z
     SMTP_PORT: z.coerce.number().int().positive().default(1025),
     MAIL_FROM: z.string().default("Needs Hub <updates@needs-hub.local>"),
     MATCH_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
+    // Authentication (Better Auth). Generate a secret with: openssl rand -base64 32
+    BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters (openssl rand -base64 32, or run `make env`)"),
+    BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
   })
   .superRefine((env, ctx) => {
+    if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
+      ctx.addIssue({ code: "custom", path: ["GOOGLE_CLIENT_SECRET"], message: "Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither" });
+    }
     if (env.AI_PROVIDER !== "openai") return;
     for (const key of ["OPENAI_API_KEY", "OPENAI_MODEL", "OPENAI_EMBEDDING_MODEL"] as const) {
       if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: `${key} is required when AI_PROVIDER=openai` });
@@ -24,6 +32,8 @@ const schema = z
   });
 
 export type Env = z.infer<typeof schema>;
+
+export const googleConfigured = (env: Env) => Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
 let cached: Env | undefined;
 

@@ -36,14 +36,16 @@ run: setup dev ## Everything: prerequisites, .env, deps, Docker, migrate, seed, 
 
 dev: ## Start the dev server on PORT (or the next free port)
 	@port=$$($(MAKE) -s free-port); \
+	$(call auth-url-for,$$port); \
 	printf "\n$(OK)Needs Hub$(END) → $(BOLD)http://localhost:$$port$(END)   (Mailpit: $(MAILPIT_URL))\n"; \
-	printf "$(DIM)Sign in as any seeded user; Ctrl+C to stop. See README → Walk through the workflow.$(END)\n\n"; \
-	npx next dev -p $$port
+	printf "$(DIM)Sign in with a demo email (magic link arrives in Mailpit); Ctrl+C to stop. See README.$(END)\n\n"; \
+	BETTER_AUTH_URL=http://localhost:$$port npx next dev -p $$port
 
 start: setup build ## Production build, then serve it on PORT (or the next free port)
 	@port=$$($(MAKE) -s free-port); \
+	$(call auth-url-for,$$port); \
 	printf "\n$(OK)Needs Hub (production build)$(END) → $(BOLD)http://localhost:$$port$(END)\n\n"; \
-	npx next start -p $$port
+	BETTER_AUTH_URL=http://localhost:$$port npx next start -p $$port
 
 # ---------------------------------------------------------------- setup steps
 
@@ -68,9 +70,14 @@ docker: ## Make sure the Docker daemon is running (starts Docker Desktop on macO
 	fi; \
 	printf "$(ERR)✗ Docker daemon is not running. Start Docker and retry.$(END)\n"; exit 1
 
-env: ## Create .env from .env.example if it does not exist
+env: ## Create .env from .env.example if missing, and generate BETTER_AUTH_SECRET if empty
 	@if [ -f .env ]; then printf "$(OK)✓$(END) .env present\n"; \
 	else cp .env.example .env && printf "$(OK)✓$(END) Created .env from .env.example (AI_PROVIDER=mock, no API key needed)\n"; fi
+	@grep -q '^BETTER_AUTH_SECRET=..*' .env || { \
+		secret=$$(openssl rand -base64 32 2>/dev/null || node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))'); \
+		if grep -q '^BETTER_AUTH_SECRET=' .env; then sed -i.bak "s|^BETTER_AUTH_SECRET=.*|BETTER_AUTH_SECRET=$$secret|" .env && rm -f .env.bak; \
+		else printf '\nBETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=http://localhost:3000\n' "$$secret" >> .env; fi; \
+		printf "$(OK)✓$(END) Generated BETTER_AUTH_SECRET in .env\n"; }
 
 install: ## Install npm dependencies (only when package-lock.json changed)
 	@if [ -d node_modules ] && [ node_modules/.package-lock.json -nt package-lock.json ]; then \
@@ -133,6 +140,15 @@ clean: ## Stop containers and delete the local database volume and build output
 	@printf "$(OK)✓$(END) Containers, database volume and .next removed (run make to start fresh)\n"
 
 # ---------------------------------------------------------------- internal
+
+# Sign-in links and OAuth callbacks must use the port the app really runs on.
+define auth-url-for
+configured=$$(grep -E '^BETTER_AUTH_URL=' .env 2>/dev/null | cut -d= -f2-); \
+if [ -n "$$configured" ] && [ "$$configured" != "http://localhost:$(1)" ]; then \
+	printf "$(WARN)! Port $(1) is in use instead of $$configured; using BETTER_AUTH_URL=http://localhost:$(1) for this run.$(END)\n"; \
+	printf "$(WARN)  Google sign-in needs http://localhost:$(1)/api/auth/callback/google as an authorized redirect URI (magic links work as is).$(END)\n"; \
+fi
+endef
 
 .PHONY: free-port
 free-port:

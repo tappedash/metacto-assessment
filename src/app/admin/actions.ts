@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAccount, createUser, deleteGoal, saveGoal, setStaffing, setUserRole } from "@/domain/admin";
+import { createAccount, deleteGoal, saveGoal, setStaffing, setUserRole } from "@/domain/admin";
+import { inviteUser, revokeInvitation } from "@/domain/invitations";
 import type { Role } from "@/domain/permissions";
 import { requireActor } from "@/domain/session";
 import { str, withFlash } from "@/lib/flash";
@@ -33,13 +34,18 @@ export async function setStaffingAction(engineerId: string, accountId: string, s
   }
 }
 
-export async function createUserAction(form: FormData) {
+export async function inviteUserAction(form: FormData) {
   const actor = await requireActor(["admin"]);
   await withFlash("/admin/users", async () => {
-    await createUser(actor, { name: str(form, "name"), email: str(form, "email"), role: str(form, "role") as Role, accountId: str(form, "accountId") || null });
+    await inviteUser(actor, { name: str(form, "name"), email: str(form, "email"), role: str(form, "role") as Role, accountId: str(form, "accountId") || null });
     refresh();
-    return `${str(form, "name")} added.`;
+    return `Invitation sent to ${str(form, "email")}. They get access the first time they sign in with that email.`;
   });
+}
+
+export async function revokeInvitationAction(id: string) {
+  const actor = await requireActor(["admin"]);
+  await withFlash("/admin/users", async () => { await revokeInvitation(actor, id); refresh(); return "Invitation revoked."; });
 }
 
 export async function setUserRoleAction(userId: string, form: FormData) {
