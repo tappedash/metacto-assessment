@@ -10,14 +10,28 @@ Clients and engineers submit Feature Requests. AI matches each one to an existin
 
 ## Quick start
 
-Prerequisites: **Node.js ≥ 20.12** (`.nvmrc` pins 22) and **Docker** (Docker Desktop running).
+Prerequisites: **Node.js ≥ 20.12** (`.nvmrc` pins 22), **Docker** (Docker Desktop) and `make`.
 
 ```bash
-cp .env.example .env      # AI_PROVIDER=mock: no API key needed
-npm install
-npm run setup             # start Postgres + Mailpit, run migrations, seed demo data
-npm run dev               # http://localhost:3000
+make            # checks prerequisites, creates .env, installs deps, starts Docker + containers,
+                # migrates, seeds demo data, then starts the app on the first free port from 3000
 ```
+
+`make help` lists every target. The ones you'll use most:
+
+| Command | Does |
+|---|---|
+| `make` / `make run` | Everything from a fresh clone to a running app (dev server) |
+| `make setup` | Prepare everything without starting the app |
+| `make dev` | Start the dev server (`PORT=3100 make dev` to prefer another port) |
+| `make start` | Production build and serve |
+| `make check` | Types, unit tests, integration tests (reseeds) and build |
+| `make seed` / `make reset` | Reset demo data / drop the database and rebuild it |
+| `make health` | Call `/api/health` (`PORT=` if not 3000) |
+| `make mail` | Open the Mailpit inbox |
+| `make down` / `make clean` | Stop containers / also delete the database volume and `.next` |
+
+`make` starts Docker Desktop on macOS if it isn't running, and picks the next free port if 3000 is taken. Without make, the same steps are: `cp .env.example .env && npm install && npm run setup && npm run dev`.
 
 | URL | What |
 |---|---|
@@ -25,7 +39,7 @@ npm run dev               # http://localhost:3000
 | http://localhost:3000/api/health | Readiness: database, pgvector, AI provider, SMTP |
 | http://localhost:8025 | Mailpit inbox (outbound email preview) |
 
-Port 3000 busy? `npm run dev -- -p 3100`. Port 5433 busy? Change `DB_PORT` **and** the port in `DATABASE_URL` in `.env`.
+Port 5433 busy? Change `DB_PORT` **and** the port in `DATABASE_URL` in `.env`.
 
 ### Check that it works
 
@@ -197,7 +211,7 @@ One Next.js process plus two containers (Postgres + pgvector, Mailpit). No worke
 | Problem | Fix |
 |---|---|
 | `port is already allocated` on `db:up` | Another container uses the port: set `DB_PORT` (and `DATABASE_URL`) in `.env` |
-| `Cannot connect to the Docker daemon` | Start Docker Desktop |
+| `Cannot connect to the Docker daemon` | Start Docker Desktop (`make docker` does it on macOS) |
 | `Invalid environment configuration` | Copy `.env.example` to `.env`; with `AI_PROVIDER=openai` set the three `OPENAI_*` variables |
 | Odd matches after switching AI provider | `npm run db:seed` to re-embed with the current provider |
-| Start from scratch | `npm run db:reset` |
+| Start from scratch | `make clean && make` |
