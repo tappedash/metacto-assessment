@@ -4,7 +4,9 @@ import type { SessionActor } from "@/domain/session";
 import { ROLE_LABEL } from "@/domain/labels";
 import { NavLinks, type NavItem } from "./nav-links";
 
-export function Shell({ actor, items, children }: { actor: SessionActor; items: NavItem[]; children: ReactNode }) {
+export function Shell({ actor, items, children, sidebarExtra, overlay }: {
+  actor: SessionActor; items: NavItem[]; children: ReactNode; sidebarExtra?: ReactNode; overlay?: ReactNode;
+}) {
   const initials = actor.name.split(" ").map((w) => w[0]).join("").slice(0, 2);
   const roleLine = actor.role === "client" && actor.accountName ? `Client · ${actor.accountName}` : ROLE_LABEL[actor.role];
   return (
@@ -13,6 +15,7 @@ export function Shell({ actor, items, children }: { actor: SessionActor; items: 
       <aside className="sidebar">
         <a className="brand" href="/"><span className="dot" />Needs Hub</a>
         <NavLinks items={items} label={ROLE_LABEL[actor.role]} />
+        {sidebarExtra}
         <div className="user">
           <span className="avatar" aria-hidden="true">{initials}</span>
           <div className="user-meta">
@@ -25,6 +28,7 @@ export function Shell({ actor, items, children }: { actor: SessionActor; items: 
       <main id="main" tabIndex={-1}>
         <div className="page">{children}</div>
       </main>
+      {overlay}
     </>
   );
 }

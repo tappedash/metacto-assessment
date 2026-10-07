@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AssistantDrawer, AssistantNavButton } from "@/components/assistant-drawer";
 import { Shell } from "@/components/shell";
 import { requireActor } from "@/domain/session";
 
@@ -9,6 +10,6 @@ export default async function ClientLayout({ children }: { children: ReactNode }
       { href: "/client/share", label: "Share Feedback", icon: "message" },
       { href: "/client/discover", label: "Discover", icon: "compass" },
       { href: "/client/activity", label: "My Activity", icon: "clock" },
-    ]}>{children}</Shell>
+    ]} sidebarExtra={<AssistantNavButton />} overlay={<AssistantDrawer />}>{children}</Shell>
   );
 }

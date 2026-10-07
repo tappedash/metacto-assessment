@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, getDb } from "@/db/client";
+import { seed } from "@/db/seed";
 import { attachments, users } from "@/db/schema";
 import { readAttachment, saveUpload } from "@/domain/attachments";
 import { checkFeedback, contextToWhy, submitFeedback, understandFeedback } from "@/domain/feedback";
@@ -11,6 +12,7 @@ import { loadActor, type SessionActor } from "@/domain/session";
 let lena: SessionActor, sam: SessionActor, ravi: SessionActor, jo: SessionActor, dana: SessionActor;
 
 beforeAll(async () => {
+  await seed({ quiet: true }); // fresh demo data for this file
   const actor = async (name: string) => (await loadActor((await getDb().select({ id: users.id }).from(users).where(eq(users.name, name)))[0].id))!;
   [lena, sam, ravi, jo, dana] = await Promise.all(["Lena Meyer", "Sam Kim", "Ravi Patel", "Jo Osei", "Dana Ruiz"].map(actor));
 });

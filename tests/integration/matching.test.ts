@@ -1,11 +1,13 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MockEmbeddingProvider, MockLanguageModel } from "@/ai/mock";
 import { closeDb, getDb } from "@/db/client";
+import { seed } from "@/db/seed";
 import { matchRequest } from "@/domain/matching";
 
 // Requires `npm run setup` (Postgres + migrations + seed). Uses the mock AI provider.
 const ai = { llm: new MockLanguageModel(), embeddings: new MockEmbeddingProvider() };
 
+beforeAll(() => seed({ quiet: true })); // fresh demo data for this file
 afterAll(closeDb);
 
 describe("synchronous matching against seeded Postgres + pgvector", () => {

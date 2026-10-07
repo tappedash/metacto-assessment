@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, getDb } from "@/db/client";
+import { seed } from "@/db/seed";
 import { projects, tickets, users } from "@/db/schema";
 import { createTicket } from "@/domain/delivery";
 import { loadActor, type SessionActor } from "@/domain/session";
@@ -12,6 +13,7 @@ let projectId: string;
 const names = async () => (await projectWorkflow(projectId)).map((s) => `${s.name}/${s.stage}`);
 
 beforeAll(async () => {
+  await seed({ quiet: true }); // fresh demo data for this file
   const id = async (name: string) => (await getDb().select({ id: users.id }).from(users).where(eq(users.name, name)))[0].id;
   [sam, ravi] = [(await loadActor(await id("Sam Kim")))!, (await loadActor(await id("Ravi Patel")))!];
   [{ id: projectId }] = await getDb().select({ id: projects.id }).from(projects).where(eq(projects.name, "Carrier Automation"));

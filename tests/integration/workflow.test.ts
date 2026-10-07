@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, getDb } from "@/db/client";
+import { seed } from "@/db/seed";
 import { needs, projectStatuses, requests, statusUpdates, supports, tickets, users } from "@/db/schema";
 import { approveAndSend, ensureNeedInsights, saveDecision } from "@/domain/decisions";
 import { moveTicket } from "@/domain/delivery";
@@ -32,6 +33,7 @@ async function mailpitMessages(subject: string): Promise<{ To: { Address: string
 }
 
 beforeAll(async () => {
+  await seed({ quiet: true }); // fresh demo data for this file
   [lena, sam, ravi] = await Promise.all([actor("Lena Meyer"), actor("Sam Kim"), actor("Ravi Patel")]);
   const [n] = await getDb().select({ id: needs.id }).from(needs).where(eq(needs.title, "Use product data outside the platform"));
   exportNeedId = n.id;

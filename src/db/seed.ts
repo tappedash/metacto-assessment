@@ -40,11 +40,12 @@ const NEEDS = {
 };
 type NeedKey = keyof typeof NEEDS;
 
-async function main() {
+/** Resets every table and loads the demo data. Used by `npm run db:seed` and integration tests. */
+export async function seed({ quiet = false } = {}) {
   loadEnv();
   const db = getDb();
   const { embeddings } = getAi();
-  console.log(`Seeding with AI_PROVIDER embeddings: ${embeddings.provider} (${embeddings.model})`);
+  if (!quiet) console.log(`Seeding with AI_PROVIDER embeddings: ${embeddings.provider} (${embeddings.model})`);
 
   await db.execute(sql`TRUNCATE accounts, users, staffing, strategic_goals, needs, requests, supports,
     decisions, status_updates, projects, project_statuses, project_members, tickets RESTART IDENTITY CASCADE`);
@@ -178,12 +179,15 @@ async function main() {
     body: "We're building SAML sign-in for the admin console first; OIDC follows.", approvedBy: sam.id, sentAt: new Date(),
   });
 
-  console.log(`Seeded ${needRows.length} Customer Needs, ${REQUESTS.length} Feature Requests, 4 projects, 8 tickets.`);
+  if (!quiet) console.log(`Seeded ${needRows.length} Customer Needs, ${REQUESTS.length} Feature Requests, 4 projects, 8 tickets.`);
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(closeDb);
+// Run directly: `tsx src/db/seed.ts`.
+if (process.argv[1]?.endsWith("seed.ts")) {
+  seed()
+    .catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    })
+    .finally(closeDb);
+}

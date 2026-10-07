@@ -539,3 +539,22 @@ details > summary { cursor: pointer; }
 .attach-name { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .attach-head .btn-link { margin-left: auto; }
 .attach-ai { margin-top: .45rem; padding-top: .45rem; border-top: 1px solid var(--mist); font-size: 13px; color: var(--ink); }
+
+/* ---------- client Assistant ("Ask Needs Hub") ---------- */
+.assistant-nav { display: flex; gap: .65rem; align-items: center; background: none; border: 1px solid var(--ink-light); color: var(--cloud); font: 500 14px var(--font-sans); padding: .55rem .75rem; border-radius: .45rem; cursor: pointer; }
+.assistant-nav:hover { background: var(--ink); }
+.assistant-nav .ico { color: var(--orange); }
+.assistant-fab { position: fixed; top: 1rem; right: 1.25rem; z-index: 15; display: inline-flex; gap: .45rem; align-items: center; background: var(--white); color: var(--ink); border: 1px solid var(--mist); border-radius: 999px; padding: .5rem 1rem; font: 600 13.5px var(--font-sans); cursor: pointer; }
+.assistant-fab:hover { border-color: var(--pewter); }
+.assistant-fab .ico { color: var(--orange); width: 14px; height: 14px; }
+.assistant { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 100vw); z-index: 25; background: var(--white); border-left: 1px solid var(--mist); display: flex; flex-direction: column; }
+.assistant-head { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1rem; border-bottom: 1px solid var(--mist); }
+.assistant-body { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .6rem; background: var(--cloud); }
+.assistant-body .bubble { max-width: 92%; }
+.assistant-suggest { display: flex; flex-direction: column; align-items: flex-start; gap: .4rem; }
+.assistant-suggest .btn { white-space: normal; text-align: left; }
+.assistant-links { display: flex; flex-wrap: wrap; gap: .3rem .9rem; margin-top: .45rem; }
+.assistant-compose { border-top: 1px solid var(--mist); padding: .75rem 1rem 1rem; display: grid; gap: .5rem; }
+.assistant-compose textarea { min-height: 56px; margin: 0; }
+.assistant-compose .btn-row { justify-content: space-between; }
+@media (max-width: 900px) { .assistant-nav { display: none; } .assistant-fab { top: auto; bottom: 1rem; } }
